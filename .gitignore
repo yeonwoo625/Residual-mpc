@@ -1,0 +1,17 @@
+# 파이썬 캐시/로그
+__pycache__/
+*.pyc
+*.log
+
+# 실행환경/라이브러리 (mpc_host에 있음 — 코드 아님, 재설치/재생성)
+venv/
+acados/
+l4acados/
+run/
+run[0-9]/
+run_*/
+
+# 대용량 데이터셋을 빼려면 주석 해제 (지금은 combined 1개만 포함)
+# *.npz
+
+# CarMaker/IPG 라이선스 코드는 절대 넣지 말 것 (TMROS2/CMROS2)

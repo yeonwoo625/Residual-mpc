@@ -1,0 +1,12 @@
+# pip 설치 (파이썬 라이브러리)
+numpy<2
+scipy
+casadi
+torch
+matplotlib
+
+# 아래는 pip 아님 — README 참고:
+#  - acados + acados_template : 소스 빌드 (https://docs.acados.org)
+#  - l4acados                 : 소스 설치
+#  - rclpy + hmg_msgs         : ROS2 Foxy + colcon (ros2_ws/src/hmg_msgs)
+#  - CarMaker CMRosIF 브릿지   : cmnode_hellocm (TruckMaker측, 별도)

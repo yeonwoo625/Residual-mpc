@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- UDP-only transport + static unicast initial peer (loopback). Avoids the SHM
+     container/host boundary and multicast NIC asymmetry. Used by BOTH host
+     cm_node (CMStart) and the MPC container. --network host shares loopback. -->
+<dds>
+  <profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+    <transport_descriptors>
+      <transport_descriptor>
+        <transport_id>udp_tp</transport_id>
+        <type>UDPv4</type>
+      </transport_descriptor>
+    </transport_descriptors>
+    <participant profile_name="udp_static" is_default_profile="true">
+      <rtps>
+        <userTransports><transport_id>udp_tp</transport_id></userTransports>
+        <useBuiltinTransports>false</useBuiltinTransports>
+        <builtin>
+          <initialPeersList>
+            <locator><udpv4><address>127.0.0.1</address></udpv4></locator>
+          </initialPeersList>
+        </builtin>
+      </rtps>
+    </participant>
+  </profiles>
+</dds>
