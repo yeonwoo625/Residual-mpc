@@ -38,6 +38,15 @@ OUT_NPZ        = os.environ.get(
     "OUT_NPZ", "/home/vilab/CarMaker/mpc_host/truck_dataset.npz")
 DT, Tf, N      = 0.1, 2.0, 20
 
+# --- payload context (조건화 학습용) ----------------------------------------
+# MASS, COG_X 를 둘 다 주면 obs 뒤에 [m, x_cog]를 붙여 8차원으로 기록한다.
+# (적재조건별로 값 바꿔가며 여러 세션 수집 -> ConditionedResidualModel 학습용)
+# 안 주면 기존처럼 6차원(무조건화).
+_MASS  = os.environ.get("MASS", "")     # 적재 포함 총질량 [kg]
+_COG_X = os.environ.get("COG_X", "")    # 정적 무게중심 x [m]
+COND_CTX = (_MASS != "" and _COG_X != "")
+CTX = np.array([float(_MASS), float(_COG_X)]) if COND_CTX else None
+
 # --- excitation (off by default) -------------------------------------------
 # OU-smoothed perturbation added to the applied control so the truck visits
 # OFF-nominal states (n!=0, larger steering). Without it the residual model
@@ -156,6 +165,8 @@ def main():
                         u_app = np.array([(D - D_prev) / DT, (delta - delta_prev) / DT])
                         x_next_nom = predict_next_state(x_t, u_app, kappa_func, DT)
                         obs = np.array([n, alpha, v, D_prev, delta_prev, kappa_func(s)])
+                        if COND_CTX:                       # 무게·CoG 조건 추가 -> 8차원
+                            obs = np.concatenate([obs, CTX])
                         pending = (obs, x_next_nom)
                         D_prev, delta_prev = D, delta
                         if D >= 0:

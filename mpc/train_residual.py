@@ -98,12 +98,24 @@ def train(args):
         batch_size=args.batch_size, shuffle=True,
     )
     
-    # ----- model -----
-    model = ResidualModel(
-        input_dim=6, output_dim=4,
-        hidden_dim=args.hidden, n_layers=args.layers,
-    ).to(device)
-    print(f"\nModel: {count_parameters(model)} trainable parameters")
+    # ----- model (입력 차원 자동감지: 6=상태만, >6=상태+조건[무게,CoG]) -----
+    in_dim = Xn_train_t.shape[1]
+    state_dim = 6
+    ctx_dim = in_dim - state_dim
+    if ctx_dim > 0:
+        from residual_model import ConditionedResidualModel
+        model = ConditionedResidualModel(
+            state_dim=state_dim, context_dim=ctx_dim, output_dim=4,
+            hidden_dim=args.hidden, mode=args.mode,
+        ).to(device)
+        print(f"\nConditioned model: mode={args.mode}, state={state_dim}, context={ctx_dim}")
+    else:
+        model = ResidualModel(
+            input_dim=6, output_dim=4,
+            hidden_dim=args.hidden, n_layers=args.layers,
+        ).to(device)
+        print(f"\nPlain model: input={in_dim}")
+    print(f"  {count_parameters(model)} trainable parameters")
     
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr,
                                  weight_decay=args.weight_decay)
@@ -165,8 +177,10 @@ def train(args):
         'state_dict': best_state,
         'norm': norm,
         'config': {
-            'input_dim': 6, 'output_dim': 4,
+            'input_dim': in_dim, 'output_dim': 4,
             'hidden_dim': args.hidden, 'n_layers': args.layers,
+            'state_dim': state_dim, 'context_dim': ctx_dim,
+            'mode': (args.mode if ctx_dim > 0 else None),
         }
     }, out_path)
     print(f"\nSaved best model to {out_path}")
@@ -222,6 +236,9 @@ if __name__ == "__main__":
     p.add_argument("--weight-decay", type=float, default=0.0)
     p.add_argument("--jac-reg", type=float, default=0.0,
                    help="penalty on ||d(residual)/d(state)||^2 (smoother model)")
+    p.add_argument("--mode", type=str, default="concat",
+                   choices=["concat", "branch", "film"],
+                   help="conditioned-model mode (used only when data has context dims)")
     p.add_argument("--hidden", type=int, default=64)
     p.add_argument("--layers", type=int, default=3)
     p.add_argument("--split-mode", type=str, default='time',
