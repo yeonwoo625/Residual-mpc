@@ -4,7 +4,7 @@
 MPC=/home/vilab/CarMaker/mpc_docker/mpc
 source /opt/ros/foxy/setup.bash
 source /home/vilab/CarMaker/TMROS2/ros/ros2_ws/install/setup.bash
-# cm_node(브릿지)와 같은 도메인이어야 함. 공유 PC라 .bashrc 값(현재 27)이 바뀔 수
-# 있으니, 셸 환경 값을 상속(기본 27). cm_node도 같은 .bashrc를 물려받아 일치.
-export ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-27} MPC_SOCK=/tmp/mpc_sock
+# 내 도메인 = 25 (공유 PC에서 다른 사람과 토픽 안 섞이게 격리).
+# ⚠️ cm_node도 25여야 하니, 내 세션엔 ~/.bashrc의 ROS_DOMAIN_ID=25로 두고 TruckMaker 실행.
+export ROS_DOMAIN_ID=25 MPC_SOCK=/tmp/mpc_sock
 exec python3 -u "$MPC/mpc_ros_relay.py"
