@@ -2,6 +2,7 @@
 acados OCP setup for Frenet dynamic bicycle MPC.
 Adapted from adeebislam8/carla_mpc_residual_learning, simplified.
 """
+import os
 import math
 import numpy as np
 import scipy.linalg
@@ -67,9 +68,12 @@ def acados_settings(Tf, N, coeffs, knots, degree=3,
         0.0,    # D
         0.0,    # delta
     ])
+    # 조향/스로틀 변화율 벌점. R_DELTA를 키우면 조향이 매끄러워짐(잔차 chatter 억제).
+    # 환경변수로 튜닝 가능 (기본은 기존 값 2e-4).
     R = np.eye(nu)
-    R[0, 0] = 2e-4   # derD
-    R[1, 1] = 2e-4   # derDelta
+    R[0, 0] = float(os.environ.get("R_D", "2e-4"))       # derD (throttle rate)
+    R[1, 1] = float(os.environ.get("R_DELTA", "2e-4"))   # derDelta (steering rate)
+    print(f"[acados] R_D={R[0,0]:.1e}  R_DELTA={R[1,1]:.1e}", flush=True)
 
     Qe = np.diag([
         5e-5,   # s

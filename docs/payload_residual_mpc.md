@@ -35,13 +35,16 @@ Hockenheim(R_min 38 m) 12 m/s. 급코너(a_y>2)에서 Δn RMS가 무게 따라 �
 취급, 되먹임 진동 제거. (`RESIDUAL_FF=1`)
 
 ## 4. 최종 결과 (Hockenheim, 48 t, 10 m/s, 둘 다 완주 s=0~2540 m)
-| 지표 | Nominal | 잔차 MPC (FF, 무게입력, scale 0.5) | 개선 |
+| 지표 | Nominal | 잔차 MPC (FF, 무게입력, scale 0.3) | 개선 |
 |---|---:|---:|---:|
-| \|n\| 평균 (전체) | 0.325 | **0.214** | −34% |
-| \|n\| RMS (전체) | 0.397 | **0.270** | −32% |
-| \|n\| 평균 (급코너) | 0.831 | **0.221** | **−73%** |
+| \|n\| 평균 (전체) | 0.325 | **0.109** | **−66%** |
+| \|n\| RMS (전체) | 0.397 | **0.142** | −64% |
+| \|n\| 평균 (급코너) | 0.831 | **0.353** | −58% |
+| 조향 step-change | 0.07° | **0.24°** | 매끈(발산 없음) |
 
-→ **목표 2개 달성**: 잔차 MPC가 nominal을 (특히 급코너서) 크게 개선, MLP는 무게를 입력으로 받음.
+→ **목표 2개 달성**: 잔차 MPC가 nominal을 크게 개선, MLP는 무게를 입력으로 받음.
+- scale 0.5는 과보정으로 조향 떨림(1.05°) 발생 → **scale 0.3에서 떨림 0.24°로 해결 + 추종도 더 좋아짐**.
+- `R_DELTA`(조향율 벌점)는 inter-solve chatter엔 효과 없었음 → scale로 해결.
 
 ## 5. 재현 레시피
 ```bash
@@ -49,8 +52,8 @@ Hockenheim(R_min 38 m) 12 m/s. 급코너(a_y>2)에서 Δn RMS가 무게 따라 �
 train_residual.py --data hockenheim_mass.npz --mode concat --split-mode random
 cp models/residual_model.pt mpc/residual_model.pt   # 서버 로드 경로
 
-# 실행 (핵심: RESIDUAL_FF=1, MASS/COG_X, scale 0.5, 10 m/s)
-RESIDUAL_FF=1 RESIDUAL_SCALE=0.5 USE_RESIDUAL=1 MASS=48000 COG_X=4.330 \
+# 실행 (핵심: RESIDUAL_FF=1, MASS/COG_X, scale 0.3, 10 m/s)
+RESIDUAL_FF=1 RESIDUAL_SCALE=0.3 USE_RESIDUAL=1 MASS=48000 COG_X=4.330 \
   REFERENCE_PATH=hockenheim_waypoints_1lap.npy TARGET_SPEED=10 \
   LOG_TRAJ=traj_residual.npy  1_server.sh
 # nominal 기준선: USE_RESIDUAL=0 ... (같은 조건)
