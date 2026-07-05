@@ -3,6 +3,7 @@ Custom feature selector for l4acados.
 - Maps acados (state, input) to neural network input
 - Adds path-dependent kappa(s) on the fly
 """
+import os
 import torch
 import torch.nn as nn
 import numpy as np
@@ -23,10 +24,20 @@ class KappaAwareFeatureSelector(nn.Module):
         super().__init__()
         # spline params (set per episode)
         self._spline_t = None      # knots
-        self._spline_c = None      # coefficients  
+        self._spline_c = None      # coefficients
         self._spline_k = 3         # degree
         self._s_min = None
         self._s_max = None
+        # payload 조건화: MASS, COG_X 둘 다 주면 모델 입력 뒤에 [m, cog] 붙여 8차원.
+        # (조건화 모델 residual MPC 실행용; 안 주면 기존 6차원 무조건화.)
+        _m  = os.environ.get("MASS", "")
+        _cg = os.environ.get("COG_X", "")
+        self.cond = (_m != "" and _cg != "")
+        if self.cond:
+            self.register_buffer(
+                "_ctx", torch.tensor([float(_m), float(_cg)], dtype=torch.float32))
+            print(f"[selector] CONDITIONED: append [MASS={_m}, COG_X={_cg}] -> 8-dim input",
+                  flush=True)
     
     def update_kappa_spline(self, dense_s, kappa_values, degree=3):
         """
@@ -82,9 +93,13 @@ class KappaAwareFeatureSelector(nn.Module):
         
         s = y[:, 0]
         kappas = self._evaluate_kappa(s)   # (B,)
-        
+
         # [n, alpha, v, D, delta] + kappa
         out = torch.cat([y[:, 1:6], kappas.unsqueeze(-1)], dim=-1)
+        # payload 조건화: 상수 [m, cog]를 배치 전체에 붙임 -> (B, 8)
+        if self.cond:
+            ctx = self._ctx.to(out.device).expand(out.shape[0], -1)
+            out = torch.cat([out, ctx], dim=-1)
         return out
 
 

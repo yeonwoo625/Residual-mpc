@@ -20,6 +20,20 @@ from l4acados.controllers import ResidualLearningMPC
 from l4acados.models import PyTorchResidualModel
 
 
+class FeedforwardResidualModel(PyTorchResidualModel):
+    """잔차 '값'은 그대로 쓰되 Jacobian을 0으로 반환 -> MPC가 잔차를
+    조향으로 조절 가능한 항이 아니라 '고정 외란(feedforward)'으로 취급.
+    이러면 잔차↔조향 되먹임 진동 루프가 구조적으로 사라진다 (RESIDUAL_FF=1).
+    잔차 값은 매 SQP 반복마다 현재 예측 궤적에서 재평가되므로 보정은 유지된다.
+    """
+    def jacobian(self, y):
+        rdim = self.current_prediction.shape[1]   # residual_dim (=4)
+        N = self.current_prediction.shape[0]      # horizon
+        sdim = np.asarray(y).shape[1]             # state+input dim
+        self.current_prediction_dy = np.zeros((rdim, N, sdim))
+        return self.current_prediction_dy
+
+
 # Residual model output (4-dim: Δs, Δn, Δalpha, Δv)
 # acados state (6-dim: s, n, alpha, v, D, delta)
 # B matrix maps 4-dim residual to 6-dim state correction.
@@ -153,8 +167,26 @@ class MPCSolverResidual:
         self.torch_model = load_normalized_model(model_path, device=device)
         self.feature_selector = KappaAwareFeatureSelector()
         # spline은 update_path()로 나중에 갱신
-        
-        self.residual_model = PyTorchResidualModel(
+
+        # 조건화 모델(8차원 입력)인데 MASS/COG_X를 안 주면 selector가 6차원을 만들어
+        # 첫 solve에서 차원 불일치로 죽는다. 여기서 미리 명확히 알려준다.
+        model_in = int(self.torch_model.X_mean.shape[0])
+        sel_cond = bool(getattr(self.feature_selector, "cond", False))
+        if model_in > 6 and not sel_cond:
+            raise SystemExit(
+                f"[MPCSolverResidual] CONDITIONED model expects {model_in}-dim input "
+                f"but MASS/COG_X env not set (selector produces 6-dim). "
+                f"Set e.g. MASS=48000 COG_X=4.330 before running the server.")
+        if model_in == 6 and sel_cond:
+            print("[MPCSolverResidual] WARNING: MASS/COG_X set but model is "
+                  "unconditioned (6-dim); ignoring context.", flush=True)
+
+        # RESIDUAL_FF=1 -> 피드포워드(Jacobian=0) 잔차: 조향 되먹임 진동 차단.
+        _FF = os.environ.get("RESIDUAL_FF", "0") == "1"
+        _RM = FeedforwardResidualModel if _FF else PyTorchResidualModel
+        print(f"[MPCSolverResidual] residual mode = "
+              f"{'FEEDFORWARD (jac=0)' if _FF else 'full (jac)'}", flush=True)
+        self.residual_model = _RM(
             model=self.torch_model,
             feature_selector=self.feature_selector,
             use_jacfwd=True,

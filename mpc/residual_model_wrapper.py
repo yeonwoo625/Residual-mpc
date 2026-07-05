@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-from residual_model import ResidualModel
+from residual_model import ResidualModel, ConditionedResidualModel
 
 
 class NormalizedResidualModel(nn.Module):
@@ -62,14 +62,26 @@ def load_normalized_model(checkpoint_path, device='cpu', scale=None):
     
     cfg = ckpt['config']
     norm = ckpt['norm']
-    
-    # base MLP
-    base = ResidualModel(
-        input_dim=cfg['input_dim'],
-        output_dim=cfg['output_dim'],
-        hidden_dim=cfg['hidden_dim'],
-        n_layers=cfg['n_layers'],
-    )
+
+    # base MLP: 조건화(context_dim>0)면 ConditionedResidualModel, 아니면 plain
+    ctx_dim = cfg.get('context_dim', 0) or 0
+    if ctx_dim > 0:
+        base = ConditionedResidualModel(
+            state_dim=cfg.get('state_dim', 6),
+            context_dim=ctx_dim,
+            output_dim=cfg['output_dim'],
+            hidden_dim=cfg['hidden_dim'],
+            mode=cfg.get('mode', 'concat'),
+        )
+        print(f"[residual] CONDITIONED model: mode={cfg.get('mode')}, "
+              f"context_dim={ctx_dim} (input={cfg['input_dim']})", flush=True)
+    else:
+        base = ResidualModel(
+            input_dim=cfg['input_dim'],
+            output_dim=cfg['output_dim'],
+            hidden_dim=cfg['hidden_dim'],
+            n_layers=cfg['n_layers'],
+        )
     base.load_state_dict(ckpt['state_dict'])
     
     # normalized wrapper

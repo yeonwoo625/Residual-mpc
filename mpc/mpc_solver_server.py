@@ -69,6 +69,22 @@ def main():
 
     D_prev = delta_prev = 0.0
 
+    # 궤적 로깅 (LOG_TRAJ=path 주면 매 solve의 [s,n,alpha,v,D,delta]를 저장).
+    # nominal vs residual 추종오차(|n|) 비교용. 연결 종료/Ctrl-C 때 저장.
+    LOG_TRAJ = os.environ.get("LOG_TRAJ", "")
+    traj = []
+
+    def save_traj():
+        if LOG_TRAJ and traj:
+            arr = np.array(traj)
+            np.save(LOG_TRAJ, arr)
+            print(f"[server] traj saved: {arr.shape} -> {LOG_TRAJ} "
+                  f"(|n| mean={np.abs(arr[:,1]).mean():.3f} max={np.abs(arr[:,1]).max():.3f})",
+                  flush=True)
+
+    import signal as _sig
+    _sig.signal(_sig.SIGINT, lambda *a: (save_traj(), exit(0)))
+
     if os.path.exists(SOCK):
         os.remove(SOCK)
     srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -94,13 +110,23 @@ def main():
                 ok = (np.all(np.isfinite(x0)) and abs(n) < 8.0
                       and 0.0 <= s < pi["s_total"] - 5.0)
                 if ok:
-                    D, delta, status = mpc.solve(x0)
+                    # solve 내부(l4acados/acados/모델)가 off-distribution 상태에서
+                    # 예외를 던질 수 있다. 잡아서 마지막 제어를 유지 -> 서버 안 죽음.
+                    try:
+                        D, delta, status = mpc.solve(x0)
+                    except Exception as e:
+                        if n_solve % 10 == 0:
+                            print(f"[server] solve failed ({e}); holding last control",
+                                  flush=True)
+                        D, delta, status = D_prev, delta_prev, -1
                     D_prev, delta_prev = D, delta
                     if D >= 0:
                         gas = float(np.clip(D, 0.0, 1.0)); brake = 0.0
                     else:
                         gas = 0.0; brake = float(np.clip(-D, 0.0, 1.0))
                     steering = float(delta * STEER_RATIO)
+                    if LOG_TRAJ:
+                        traj.append([s, n, alpha, v, D, delta])
                     if n_solve % 10 == 0:
                         print(f"[server] s={s:6.1f} n={n:+.2f} a={np.rad2deg(alpha):+.1f} "
                               f"v={v:.2f}/{TARGET_SPEED} D={D:+.3f} "
@@ -115,6 +141,7 @@ def main():
             print(f"[server] connection ended: {e}", flush=True)
         finally:
             conn.close()
+            save_traj()
             print("[server] relay disconnected, waiting for next", flush=True)
 
 
