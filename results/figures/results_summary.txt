@@ -1,0 +1,7 @@
+Hockenheim 48 t, 10 m/s, full lap (s=0~2540 m)
+metric                       Nominal  Residual  improve
+|n| mean overall              0.3246    0.1092   -66.4%
+|n| RMS overall               0.3967    0.1422   -64.2%
+|n| mean sharp corner         0.8308    0.3525   -57.6%
+
+Mass-dependence (sharp corners): Dn RMS 32t=0.0898 -> 56t=0.1095, corr=+0.992
