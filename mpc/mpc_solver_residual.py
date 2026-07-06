@@ -213,6 +213,33 @@ class MPCSolverResidual:
         self._dbg_hits = np.zeros(4, dtype=int)
         self._dbg_maxabs = np.zeros(4)
 
+        # 격리 실험용 per-step 로그 (RESIDUAL_DBG_LOG=path). 같은 체크포인트로
+        # full(use_jacfwd) vs FF(jac=0)를 토글하며 매 스텝 기록:
+        #   [s,n,alpha,v,D,delta,  ||B.dg/dx||(참값, FF여부 무관),  Dn,Da,Dv(잔차값),  status]
+        # ||B.dg/dx||은 torch_model에서 직접 autograd로 계산 -> full이 쓰고 FF가 버리는
+        # 바로 그 Jacobian 크기를 두 실행 모두 동일 정의로 남긴다.
+        self._dbglog_path = os.environ.get("RESIDUAL_DBG_LOG", "")
+        self._dbglog = []
+        if self._dbglog_path:
+            import atexit
+            atexit.register(self._save_dbglog)
+
+    def _true_bjac_norm(self, x6):
+        y = torch.tensor(np.concatenate([np.asarray(x6, float), [0.0, 0.0]])[None, :],
+                         dtype=torch.float32, device=self.device, requires_grad=True)
+        out = self.torch_model(self.feature_selector(y))   # (1,4) 물리 잔차
+        J = torch.zeros(4, 6)
+        for k in range(4):
+            g, = torch.autograd.grad(out[0, k], y, retain_graph=(k < 3))
+            J[k] = g[0, :6]
+        return float(np.linalg.norm(B_MATRIX @ J.detach().cpu().numpy()))
+
+    def _save_dbglog(self):
+        if self._dbglog_path and self._dbglog:
+            np.save(self._dbglog_path, np.array(self._dbglog))
+            print(f"[resid-dbg] saved {len(self._dbglog)} rows -> {self._dbglog_path}",
+                  flush=True)
+
     def update_path(self, dense_s, kappa_values, degree=3):
         """매 episode 시작 시 호출. selector의 kappa_spline 갱신."""
         self.feature_selector.update_kappa_spline(dense_s, kappa_values, degree=degree)
@@ -276,11 +303,24 @@ class MPCSolverResidual:
         
         # ----- l4acados solve (residual 자동 적용) -----
         status = self.controller.solve()
-        
+
         # ----- 결과 추출 -----
         x1 = ocp_solver.get(1, "x")
         target_D = float(x1[4])
         target_delta = float(x1[5])
+
+        if self._dbglog_path:
+            with torch.no_grad():
+                r = self.torch_model(self.feature_selector(torch.tensor(
+                    [[s, n, alpha, v, D, delta, 0.0, 0.0]],
+                    dtype=torch.float32, device=self.device))).cpu().numpy()[0]
+            jn = self._true_bjac_norm(x0)
+            # cols: s,n,alpha,v,D,delta, ||B.dg/dx||, Dn,Da,Dv, target_delta(명령조향), status
+            #  -> 발산 개시 때 target_delta가 먼저 과조향으로 튀나(spurious δ-Jac/clamp)
+            #     아니면 Dv가 먼저 한 방향으로 쌓이나(payload)를 로그로 격리.
+            self._dbglog.append([s, n, alpha, v, D, delta, jn,
+                                 float(r[1]), float(r[2]), float(r[3]),
+                                 target_delta, int(status)])
         
         return target_D, target_delta, status
 
