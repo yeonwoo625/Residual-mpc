@@ -34,6 +34,24 @@ class FeedforwardResidualModel(PyTorchResidualModel):
         return self.current_prediction_dy
 
 
+class MaskedJacResidualModel(PyTorchResidualModel):
+    """잔차 Jacobian에서 지정한 입력 열만 0으로 마스킹 (기본: δ열=idx5).
+    폐루프 공선성(corr(δ,n)≈-0.83, R²≈0.97)으로 사실상 unidentified된 ∂g/∂δ만
+    제거하고, 잘 학습된 ∂g/∂n·∂g/∂α는 보존한다 -> full FF의 수술적 대안.
+    (RESIDUAL_MASK_JAC='5' 또는 '5,6' 처럼 열 인덱스 지정. y=[s,n,α,v,D,δ,derD,derδ])
+    잔차 '값' g는 그대로 적용되므로 보정은 유지되고, δ의 confound된 기울기만 뺀다.
+    """
+    def __init__(self, *args, mask_cols=(5,), **kwargs):
+        super().__init__(*args, **kwargs)
+        self._mask_cols = list(mask_cols)
+
+    def jacobian(self, y):
+        J = super().jacobian(y)          # (rdim, N, nx+nu) numpy, ∂g/∂[x;u]
+        J[:, :, self._mask_cols] = 0.0   # confound된 δ열만 제거
+        self.current_prediction_dy = J
+        return J
+
+
 # Residual model output (4-dim: Δs, Δn, Δalpha, Δv)
 # acados state (6-dim: s, n, alpha, v, D, delta)
 # B matrix maps 4-dim residual to 6-dim state correction.
@@ -181,16 +199,29 @@ class MPCSolverResidual:
             print("[MPCSolverResidual] WARNING: MASS/COG_X set but model is "
                   "unconditioned (6-dim); ignoring context.", flush=True)
 
-        # RESIDUAL_FF=1 -> 피드포워드(Jacobian=0) 잔차: 조향 되먹임 진동 차단.
+        # 잔차 Jacobian 처리 모드:
+        #   RESIDUAL_FF=1          -> full feedforward (Jacobian 전체 0)
+        #   RESIDUAL_MASK_JAC="5"  -> partial FF (δ열만 0; confound된 ∂g/∂δ 제거)
+        #   (둘 다 없으면)         -> full Jacobian
         _FF = os.environ.get("RESIDUAL_FF", "0") == "1"
-        _RM = FeedforwardResidualModel if _FF else PyTorchResidualModel
-        print(f"[MPCSolverResidual] residual mode = "
-              f"{'FEEDFORWARD (jac=0)' if _FF else 'full (jac)'}", flush=True)
-        self.residual_model = _RM(
-            model=self.torch_model,
-            feature_selector=self.feature_selector,
-            use_jacfwd=True,
-        )
+        _mask = os.environ.get("RESIDUAL_MASK_JAC", "")
+        if _FF:
+            self.residual_model = FeedforwardResidualModel(
+                model=self.torch_model, feature_selector=self.feature_selector,
+                use_jacfwd=True)
+            print("[MPCSolverResidual] residual mode = FEEDFORWARD (jac=0)", flush=True)
+        elif _mask:
+            cols = tuple(int(c) for c in _mask.split(","))
+            self.residual_model = MaskedJacResidualModel(
+                model=self.torch_model, feature_selector=self.feature_selector,
+                use_jacfwd=True, mask_cols=cols)
+            print(f"[MPCSolverResidual] residual mode = MASKED-JAC cols={cols} "
+                  f"(partial FF; δ열이면 5)", flush=True)
+        else:
+            self.residual_model = PyTorchResidualModel(
+                model=self.torch_model, feature_selector=self.feature_selector,
+                use_jacfwd=True)
+            print("[MPCSolverResidual] residual mode = full (jac)", flush=True)
         
         # ----- Build l4acados ResidualLearningMPC -----
         print("[MPCSolverResidual] building ResidualLearningMPC...")
