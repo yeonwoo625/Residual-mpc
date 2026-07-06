@@ -144,9 +144,13 @@ def acados_settings(Tf, N, coeffs, knots, degree=3,
     # ---- Solver options ----
     ocp.solver_options.tf = Tf
     ocp.solver_options.qp_solver       = "PARTIAL_CONDENSING_HPIPM"
-    ocp.solver_options.nlp_solver_type = "SQP_RTI"
+    # NLP_SOLVER=SQP + NLP_MAX_ITER>1 -> full SQP (RTI 민감성 검증용). 기본 SQP_RTI.
+    ocp.solver_options.nlp_solver_type = os.environ.get("NLP_SOLVER", "SQP_RTI")
+    ocp.solver_options.nlp_solver_max_iter = int(os.environ.get("NLP_MAX_ITER", "1"))
     ocp.solver_options.hessian_approx  = "GAUSS_NEWTON"
     ocp.solver_options.levenberg_marquardt = 1e-3
+    print(f"[acados] nlp_solver={ocp.solver_options.nlp_solver_type} "
+          f"max_iter={ocp.solver_options.nlp_solver_max_iter}", flush=True)
 
     acados_solver = AcadosOcpSolver(ocp, json_file=json_file)
     print("[acados_settings] solver created")

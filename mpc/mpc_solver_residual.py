@@ -52,6 +52,22 @@ class MaskedJacResidualModel(PyTorchResidualModel):
         return J
 
 
+class JacScaledResidualModel(PyTorchResidualModel):
+    """잔차 Jacobian 전체에 λ(RESIDUAL_JAC_SCALE)를 곱한다.
+    λ=1.0 -> full-jac,  λ=0.0 -> FF와 동일.  그 사이로 '얼마나 작은 Jacobian까지
+    폐루프가 발산하나'의 안정 임계를 매핑한다. 값 g는 그대로 -> 값 완전 고정,
+    Jacobian 크기만 변화(재학습 confound 없음). FF/full의 연속 일반화.
+    """
+    def __init__(self, *args, jac_scale=1.0, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._js = float(jac_scale)
+
+    def jacobian(self, y):
+        J = super().jacobian(y) * self._js
+        self.current_prediction_dy = J
+        return J
+
+
 # Residual model output (4-dim: Δs, Δn, Δalpha, Δv)
 # acados state (6-dim: s, n, alpha, v, D, delta)
 # B matrix maps 4-dim residual to 6-dim state correction.
@@ -205,11 +221,18 @@ class MPCSolverResidual:
         #   (둘 다 없으면)         -> full Jacobian
         _FF = os.environ.get("RESIDUAL_FF", "0") == "1"
         _mask = os.environ.get("RESIDUAL_MASK_JAC", "")
+        _jscale = os.environ.get("RESIDUAL_JAC_SCALE", "")
         if _FF:
             self.residual_model = FeedforwardResidualModel(
                 model=self.torch_model, feature_selector=self.feature_selector,
                 use_jacfwd=True)
             print("[MPCSolverResidual] residual mode = FEEDFORWARD (jac=0)", flush=True)
+        elif _jscale:
+            self.residual_model = JacScaledResidualModel(
+                model=self.torch_model, feature_selector=self.feature_selector,
+                use_jacfwd=True, jac_scale=float(_jscale))
+            print(f"[MPCSolverResidual] residual mode = JAC-SCALED lambda={_jscale} "
+                  f"(value fixed, Jacobian x{_jscale}; 1=full 0=FF)", flush=True)
         elif _mask:
             cols = tuple(int(c) for c in _mask.split(","))
             self.residual_model = MaskedJacResidualModel(
