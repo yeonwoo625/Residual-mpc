@@ -27,7 +27,15 @@ from scipy.interpolate import make_interp_spline
 
 from reference_utils import (
     compute_path_spline, compute_kappa_spline_for_acados, cartesian_to_frenet)
-from mpc_solver import MPCSolver
+# USE_RESIDUAL=1 -> drive with FF residual MPC (DAgger 1st round): keeps corner
+# |n| low so the steering dither survives (sc_n>0) in sharp corners. The residual
+# TARGET stays exact = actual - nominal(actual control); policy only shifts the
+# visited state distribution. Default 0 -> nominal MPC (original behavior).
+USE_RESIDUAL = os.environ.get("USE_RESIDUAL", "0") == "1"
+if USE_RESIDUAL:
+    from mpc_solver_residual import MPCSolverResidual
+else:
+    from mpc_solver import MPCSolver
 from dynamics_predict import predict_next_state
 
 SOCK           = os.environ.get("MPC_SOCK", "/tmp/mpc_sock")
@@ -36,6 +44,9 @@ TARGET_SPEED   = float(os.environ.get("TARGET_SPEED", "4.0"))
 STEER_RATIO    = float(os.environ.get("STEER_RATIO", "10.0"))
 OUT_NPZ        = os.environ.get(
     "OUT_NPZ", "/home/vilab/CarMaker/mpc_host/truck_dataset.npz")
+MODEL_PATH     = os.environ.get(                # residual model for FF driving
+    "RESIDUAL_MODEL_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "residual_model.pt"))
 DT, Tf, N      = 0.1, 2.0, 20
 
 # --- payload context (조건화 학습용) ----------------------------------------
@@ -93,10 +104,15 @@ def main():
         sc = max(pi["dense_s"][0], min(s, pi["dense_s"][-1]))
         return float(ksp(sc))
 
-    mpc = MPCSolver(coeffs=co, knots=kn, Tf=Tf, N=N,
-                    target_speed=TARGET_SPEED, global_path_length=pi["s_total"])
+    if USE_RESIDUAL:
+        mpc = MPCSolverResidual(coeffs=co, knots=kn, model_path=MODEL_PATH, Tf=Tf, N=N,
+                                target_speed=TARGET_SPEED, global_path_length=pi["s_total"])
+        mpc.update_path(pi["dense_s"], pi["kappa"])
+    else:
+        mpc = MPCSolver(coeffs=co, knots=kn, Tf=Tf, N=N,
+                        target_speed=TARGET_SPEED, global_path_length=pi["s_total"])
     exc_on = EXCITE_D > 0 or EXCITE_DELTA > 0
-    print(f"[collect] NOMINAL MPC ready. path={pi['s_total']:.1f}m "
+    print(f"[collect] {'RESIDUAL(FF)' if USE_RESIDUAL else 'NOMINAL'} MPC ready. path={pi['s_total']:.1f}m "
           f"target={TARGET_SPEED} m/s  excite={'ON' if exc_on else 'off'}"
           f"(D={EXCITE_D},δ={EXCITE_DELTA}) -> {OUT_NPZ}", flush=True)
     rng = np.random.default_rng()
