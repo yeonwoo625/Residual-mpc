@@ -15,3 +15,20 @@ run_*/
 # *.npz
 
 # CarMaker/IPG 라이선스 코드는 절대 넣지 말 것 (TMROS2/CMROS2)
+
+# acados 코드생성 산출물 (경로가 박혀 재사용 불가 — 재생성)
+c_generated_code/
+acados_ocp*.json
+*_ocp.json
+
+# 배포용 zip (export 스크립트로 재생성)
+results/*.zip
+
+# .mat 변환본 중 이미 추적 중인 .npy/.npz 를 복제한 것 (export_matlab.py 로 재생성)
+results/matlab/all_data.mat
+results/matlab/traj/
+results/matlab/ablation/
+results/matlab/dbglog/
+results/matlab/cloop/
+results/matlab/residual_data/
+results/matlab/INVENTORY.md

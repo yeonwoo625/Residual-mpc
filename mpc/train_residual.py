@@ -66,6 +66,10 @@ def unnormalize(arr, mean, std):
 
 
 def train(args):
+    # 재현/공정 ablation용 시드 고정 (학습 루프 shuffle 포함).
+    # cond vs uncond를 같은 시드로 학습하면 차이 = mass 열만으로 귀속됨.
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
     # ----- load data -----
     (X_train, y_train), (X_val, y_val) = load_dataset(
         args.data, val_ratio=0.2, split_mode=args.split_mode)
@@ -244,5 +248,7 @@ if __name__ == "__main__":
     p.add_argument("--split-mode", type=str, default='time',
                    choices=['random', 'time'],
                    help="train/val split mode")
+    p.add_argument("--seed", type=int, default=42,
+                   help="fixed seed (paired cond/uncond ablation reproducibility)")
     args = p.parse_args()
     train(args)

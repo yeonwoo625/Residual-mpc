@@ -6,5 +6,8 @@ source /opt/ros/foxy/setup.bash
 source /home/vilab/CarMaker/TMROS2/ros/ros2_ws/install/setup.bash
 # 내 도메인 = 25 (공유 PC에서 다른 사람과 토픽 안 섞이게 격리).
 # ⚠️ cm_node도 25여야 하니, 내 세션엔 ~/.bashrc의 ROS_DOMAIN_ID=25로 두고 TruckMaker 실행.
-export ROS_DOMAIN_ID=25 MPC_SOCK=/tmp/mpc_sock
+# 도메인은 현재 셸(=TruckMaker를 띄운 셸, ~/.bashrc)을 따른다. 하드코딩하면
+# cm_node 와 어긋나 토픽이 안 오고 solve 0건이 된다 (2026-08-04에 실제로 발생).
+export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-25}" MPC_SOCK=/tmp/mpc_sock
+echo "[relay] ROS_DOMAIN_ID=$ROS_DOMAIN_ID (cm_node 와 같아야 함)"
 exec python3 -u "$MPC/mpc_ros_relay.py"

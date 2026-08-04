@@ -73,11 +73,21 @@ def main():
     # nominal vs residual 추종오차(|n|) 비교용. 연결 종료/Ctrl-C 때 저장.
     LOG_TRAJ = os.environ.get("LOG_TRAJ", "")
     traj = []
+    print(f"[server] LOG_TRAJ = {LOG_TRAJ or '(미설정 -> 궤적 저장 안 함)'}", flush=True)
 
-    def save_traj():
-        if LOG_TRAJ and traj:
-            arr = np.array(traj)
-            np.save(LOG_TRAJ, arr)
+    def save_traj(quiet=False):
+        # 저장이 조용히 스킵되면 주행을 통째로 날린다 -> 왜 안 됐는지 반드시 알린다.
+        if not LOG_TRAJ:
+            if not quiet:
+                print("[server] LOG_TRAJ 미설정 -> 저장 안 함", flush=True)
+            return
+        if not traj:
+            if not quiet:
+                print("[server] 기록된 solve 0건 -> 저장할 궤적 없음", flush=True)
+            return
+        arr = np.array(traj)
+        np.save(LOG_TRAJ, arr)
+        if not quiet:
             print(f"[server] traj saved: {arr.shape} -> {LOG_TRAJ} "
                   f"(|n| mean={np.abs(arr[:,1]).mean():.3f} max={np.abs(arr[:,1]).max():.3f})",
                   flush=True)
@@ -127,6 +137,8 @@ def main():
                     steering = float(delta * STEER_RATIO)
                     if LOG_TRAJ:
                         traj.append([s, n, alpha, v, D, delta])
+                        if len(traj) % 200 == 0:
+                            save_traj(quiet=True)   # kill/창닫기로도 안 날아가게
                     if n_solve % 10 == 0:
                         print(f"[server] s={s:6.1f} n={n:+.2f} a={np.rad2deg(alpha):+.1f} "
                               f"v={v:.2f}/{TARGET_SPEED} D={D:+.3f} "
