@@ -15,6 +15,24 @@
 | `waypoints/` | 기준 경로 (x, y) | 3 |
 | `all_data.mat` | 위 전부를 하나의 중첩 struct로 (`traj.ff_32.n` 식 접근) | 1 |
 
+### 분석 결과 `.mat` (2026-08-25 추가, `export_matlab.py`와 별개)
+
+위 표는 원본 배열을 그대로 내보낸 것이고, 아래는 **계산된 분석 결과**다. 각 파일은
+전용 파이썬 스크립트가 만들고 전용 `plot_*.m`이 그린다.
+
+| 파일 | 만든 스크립트 | 내용 | 그리기 |
+|---|---|---|---|
+| `fig_seed_jacobian.mat` | `results/seed_jacobian.py` | 시드 5개 간 값/미분 불일치 [%]. 값 Δn 3.5% vs 미분 78% → **미분은 데이터로 식별되지 않는다** | `plot_seed_jacobian.m` |
+| `fig_channel_learnability.mat` | `results/channel_learnability.py` | 채널별 달성치 vs noise ceiling. 횡 1.6% / 종 50.1% 설명 불가 → **종방향은 원리적 학습 불가** | `plot_channel_learnability.m` |
+| `figT7_authority.mat` | (세션 스크립트) | 조향 권한 ‖∂n_N/∂δ‖를 3개 주행(ff/js05/js10) 궤적 전체에서 계산. 중첩 struct (`S.js05.auth_nominal` 식) | `plot_figT7_authority.m` |
+| `figT7_simple.mat` | 〃 | 위에서 js05 하나만 평탄한 벡터 5개로 뽑은 것 (`s, auth_off, auth_on, jitter_off, jitter_on`) | `plot_figT7_simple.m` |
+
+> ⚠️ `figT7_authority.mat`는 기존 `results/figures/figT7_authority_collapse.png`의 **26% 붕괴를 재현하지 않는다.**
+> 그 값은 단일 작동점(12 m/s) 결과이고, 궤적 전체로는 4~141%로 요동친다(중앙값 67~74%).
+> 강건한 지표는 붕괴가 아니라 **스텝 간 요동(1.4% → 16%, 11배)**이다.
+> 사용 모델: `results/seed_models/seedjac_s0.pt` 계열이 아니라 `mpc/residual_model_nomass_s0.pt`.
+> λ-스윕 주행이 어떤 체크포인트로 돌았는지는 로그에 없어 이 모델로 계산했다.
+
 ## 변수 규약
 
 ### 궤적 파일 (`traj/`, `ablation/`, `cloop/`) — 6열
@@ -93,6 +111,13 @@
 | `plot_fig4_mass_dependence.m` | fig4 — 적재→횡잔차 \|Δn\| + 상관 |
 | `plot_fig9_ablation.m` | fig9 — 조건화 O/X 급코너 RMS (시드 점 + paired 차이) |
 | `plot_figM1_lambda.m` | figM1/figT7 — λ 스윕 발산, 조향 활동도 |
+| `plot_seed_jacobian.m` | 시드 간 값/미분 불일치 막대 (값 1개 + 미분 6개) |
+| `plot_channel_learnability.m` | 채널별 달성치 막대 + noise ceiling 가로선 |
+| `plot_figT7_simple.m` | 조향 권한과 스텝 간 요동 (평탄 벡터 버전, 권장) |
+| `plot_figT7_authority.m` | 위와 같으나 주행 3개 선택 가능 + 급코너 음영 |
+
+> 색 규약(신규 4개): **파랑 `[0.12 0.47 0.71]` / 주황 `[0.90 0.49 0.13]`**. 기존 그림의 초록/빨강은
+> 적록색약 D형에서 ΔE 6.5로 구분되지 않아(파랑/주황은 33.8) 신규 그림부터 바꿨다.
 
 보조 함수: `load_track.m`(경로→s·psi·kappa), `frenet_to_xy.m`((s,n)→전역좌표),
 `corner_mask.m`(급코너 = \|kappa\| 상위 20%), `pctl.m`(분위수).
