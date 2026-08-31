@@ -7,6 +7,9 @@
 %   interaction 높은 gain 에서 잔차 세기: scale corner mean chatter labels
 %
 % 색: 파랑(nominal) / 주황(residual). 적록색약 안전.
+%
+% 실행: results/matlab/ 폴더 안에서 `plot_b1_summary`
+% 요구: base MATLAB 만 (툴박스 불필요). R2013a 이상.
 
 load('fig_b1_summary.mat')
 
@@ -28,7 +31,7 @@ for i = x
          sprintf('-%.0f%%', speed.improve(i)), 'HorizontalAlignment','center', ...
          'FontWeight','bold','FontSize',10,'Color',GRY);
 end
-set(gca,'XTick',x,'XTickLabel',compose('%.1f', speed.v_target))
+set(gca,'XTick',x,'XTickLabel',arrayfun(@(z) sprintf('%.1f',z), speed.v_target, 'UniformOutput',false))
 xlabel('Target speed  [m/s]'); ylabel('Corner RMS lateral error  [m]')
 ylim([0 max(speed.nom)*1.25]); xlim([0.4 numel(x)+0.6])
 legend({'Nominal MPC','Residual MPC'},'Location','northwest','Box','off','FontSize',10)
@@ -38,7 +41,7 @@ set(gca,'FontSize',11,'TickDir','out','YGrid','on', ...
         'GridColor',[.85 .85 .85],'GridAlpha',1,'Layer','bottom')
 bar(x-0.18, speed.chat_nom, 0.34, 'FaceColor', NOM, 'EdgeColor','none');
 bar(x+0.18, speed.chat_res, 0.34, 'FaceColor', RES, 'EdgeColor','none');
-set(gca,'XTick',x,'XTickLabel',compose('%.1f', speed.v_target))
+set(gca,'XTick',x,'XTickLabel',arrayfun(@(z) sprintf('%.1f',z), speed.v_target, 'UniformOutput',false))
 xlabel('Target speed  [m/s]'); ylabel('Steering chatter  RMS(d\delta/dt)')
 xlim([0.4 numel(x)+0.6])
 legend({'Nominal MPC','Residual MPC'},'Location','northwest','Box','off','FontSize',10)
@@ -51,8 +54,8 @@ set(gca,'FontSize',11,'TickDir','out','XScale','log','YGrid','on', ...
         'GridColor',[.85 .85 .85],'GridAlpha',1,'Layer','bottom')
 plot(qn_sweep.qn, qn_sweep.corner, '-o', 'Color', NOM, 'LineWidth',2, ...
      'MarkerFaceColor', NOM, 'MarkerSize',7);
-yline(speed.res(1), '--', 'Residual MPC (Q_n = 10^{-4})', 'Color', RES, ...
-      'LineWidth',2, 'LabelHorizontalAlignment','left', 'FontSize',10);
+plot([7e-5 1.4e-2], [speed.res(1) speed.res(1)], '--', 'Color', RES, 'LineWidth',2);
+text(1.1e-4, speed.res(1)+0.035, 'Residual MPC (Q_n = 10^{-4})', 'Color', RES, 'FontSize',10);
 xlabel('Lateral error weight  Q_n'); ylabel('Corner RMS lateral error  [m]')
 xlim([7e-5 1.4e-2]); ylim([0 max(qn_sweep.corner)*1.15])
 text(1.1e-4, 0.90*max(qn_sweep.corner), sprintf('-%.0f%% by tuning alone', ...
@@ -66,7 +69,7 @@ for i = 1:3
     text(i, payload.corner(i)+0.008, sprintf('%.3f', payload.corner(i)), ...
          'HorizontalAlignment','center','FontSize',10,'FontWeight','bold');
 end
-set(gca,'XTick',1:3,'XTickLabel',compose('%d t', payload.mass))
+set(gca,'XTick',1:3,'XTickLabel',arrayfun(@(z) sprintf('%d t',z), payload.mass, 'UniformOutput',false))
 xlabel('Payload condition'); ylabel('Corner RMS lateral error  [m]')
 ylim([0 max(payload.corner)*1.35]); xlim([0.4 3.6])
 legend({'Nominal, single tuned gain (Q_n = 10^{-2})'}, ...
