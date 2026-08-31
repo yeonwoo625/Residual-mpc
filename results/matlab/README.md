@@ -28,6 +28,7 @@
 | `figT7_simple.mat` | 〃 | 위에서 js05 하나만 평탄한 벡터 5개로 뽑은 것 (`s, auth_off, auth_on, jitter_off, jitter_on`) | `plot_figT7_simple.m` |
 | `fig_b1_summary.mat` | `results/b1_summary.py` | B1 실험 종합 — 속도 스윕/가중치 스윕/적재 검증/게인×잔차세기. struct 4개 (`speed`, `qn_sweep`, `payload`, `interaction`) | `plot_b1_summary.m` |
 | `fig_payload_observability.mat` | `results/payload_observability.py` | 질량이 왜 입력으로 불필요한가 — 상태에서 질량 복원(R²=0.79) + 입력 고정 시 추가 설명력(0.3%) | `plot_payload_observability.m` |
+| `fig_safety.mat` | `results/safety_failure_modes.py` | 안전성 — 포화 한계(clamp) 작동 빈도(정상 5~7% vs 불안정 18.6%)와 조향 채터의 상관(r=+0.995), 실패 모드 4종 | `plot_safety.m` |
 
 > ⚠️ `figT7_authority.mat`는 기존 `results/figures/figT7_authority_collapse.png`의 **26% 붕괴를 재현하지 않는다.**
 > 그 값은 단일 작동점(12 m/s) 결과이고, 궤적 전체로는 4~141%로 요동친다(중앙값 67~74%).
@@ -119,6 +120,7 @@
 | `plot_figT7_authority.m` | 위와 같으나 주행 3개 선택 가능 + 급코너 음영 |
 | `plot_b1_summary.m` | B1 종합 — 속도별 nominal vs residual, 가중치 스윕, 적재 검증 (그림 2장) |
 | `plot_payload_observability.m` | 질량 관측가능성 3칸 — 예측 산점 / 특징 기여 / 조건부 잉여성 |
+| `plot_safety.m` | 포화 빈도 막대 + 채터와의 상관 산점 (이상 징후 지표) |
 
 > 색 규약(신규 4개): **파랑 `[0.12 0.47 0.71]` / 주황 `[0.90 0.49 0.13]`**. 기존 그림의 초록/빨강은
 > 적록색약 D형에서 ΔE 6.5로 구분되지 않아(파랑/주황은 33.8) 신규 그림부터 바꿨다.
