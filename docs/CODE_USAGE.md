@@ -60,7 +60,10 @@ cd /home/vilab/CarMaker/mpc_docker && ./scripts/2_relay.sh    # "relay connected
 | `RESIDUAL_MODEL_PATH` | 모델 경로 (기본 mpc/residual_model.pt) |
 | `MASS`, `COG_X` | 조건화(8-dim) 모델 컨텍스트 |
 | `RESIDUAL_DBG_LOG=path` | per-step 12열 로그 저장(발산 진단용) |
-| `R_DELTA` | 조향 rate 벌점 (acados_settings, 기본 2e-4) |
+| `RESIDUAL_SCALE` | 잔차 출력 배율 (기본 1.0). 기존 실험은 0.3 |
+| `RESIDUAL_CLAMP` | 잔차 포화 한계. 값 1개 = 기본값 배율, 4개 = `[Δs,Δn,Δα,Δv]` 직접 지정.<br>기본 `[0.2, 0.1, 0.05, 0.4]` (0.1 s 스텝당). 예: `RESIDUAL_CLAMP=2` |
+| `Q_N`, `Q_ALPHA`, `Q_V`, `Q_DELTA` | 비용 가중치 (mpc/cost_weights.py, 기본값=기존 값) |
+| `R_D`, `R_DELTA` | 스로틀·조향 rate 벌점 (기본 2e-4). nominal·residual 양쪽에 적용 |
 
 ---
 

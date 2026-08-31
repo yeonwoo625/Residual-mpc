@@ -35,7 +35,21 @@ class NormalizedResidualModel(nn.Module):
         # clamp keeps the residual MPC from being destabilized. Identity inside
         # the bounds (normal operation), saturates outside.
         if clamp is None:
-            clamp = [0.2, 0.1, 0.05, 0.4]
+            # RESIDUAL_CLAMP 로 조절 가능. 값 1개면 기본값 전체에 곱하는 배율,
+            # 4개(콤마 구분)면 [Δs,Δn,Δα,Δv] 절대값으로 직접 지정.
+            #   RESIDUAL_CLAMP=2      -> [0.4, 0.2, 0.1, 0.8]   (기본의 2배)
+            #   RESIDUAL_CLAMP=0.2,0.1,0.05,0.4 -> 기본값과 동일
+            base = [0.2, 0.1, 0.05, 0.4]
+            _c = os.environ.get("RESIDUAL_CLAMP", "").strip()
+            if not _c:
+                clamp = base
+            elif "," in _c:
+                clamp = [float(v) for v in _c.split(",")]
+                assert len(clamp) == 4, "RESIDUAL_CLAMP 는 값 1개 또는 4개"
+            else:
+                clamp = [float(_c) * b for b in base]
+            if _c:
+                print(f"[residual] clamp = {clamp}  (RESIDUAL_CLAMP={_c})", flush=True)
         self.register_buffer('y_clamp', torch.tensor(clamp, dtype=torch.float32))
 
     def forward(self, x):
@@ -50,10 +64,12 @@ class NormalizedResidualModel(nn.Module):
         return y
 
 
-def load_normalized_model(checkpoint_path, device='cpu', scale=None):
+def load_normalized_model(checkpoint_path, device='cpu', scale=None, clamp=None):
     """
     Load checkpoint and return NormalizedResidualModel ready for inference.
     scale: residual multiplier (default reads env RESIDUAL_SCALE, else 1.0).
+    clamp: 잔차 포화 한계. None 이면 env RESIDUAL_CLAMP, 그것도 없으면
+           기본값 [0.2, 0.1, 0.05, 0.4] (0.1 s 스텝당 물리 상한).
     """
     if scale is None:
         scale = float(os.environ.get("RESIDUAL_SCALE", "1.0"))
@@ -92,6 +108,7 @@ def load_normalized_model(checkpoint_path, device='cpu', scale=None):
         y_mean=norm['y_mean'],
         y_std=norm['y_std'],
         scale=scale,
+        clamp=clamp,
     )
     model.to(device)
     model.eval()
