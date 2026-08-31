@@ -9,6 +9,7 @@ import scipy.linalg
 from acados_template import AcadosModel, AcadosOcp, AcadosOcpSolver
 
 from bicycle_model import bicycle_model
+from cost_weights import get_weights
 
 DEG2RAD = math.pi / 180.0
 
@@ -60,29 +61,9 @@ def acados_settings(Tf, N, coeffs, knots, degree=3,
     ocp.cost.cost_type_e = "LINEAR_LS"
     unscale = N / Tf
 
-    Q = np.diag([
-        1e-5,   # s
-        1e-4,   # n
-        1e-5,   # alpha
-        1e-3,   # v        ← 0.0 -> 1e-3
-        0.0,    # D
-        0.0,    # delta
-    ])
-    # 조향/스로틀 변화율 벌점. R_DELTA를 키우면 조향이 매끄러워짐(잔차 chatter 억제).
-    # 환경변수로 튜닝 가능 (기본은 기존 값 2e-4).
-    R = np.eye(nu)
-    R[0, 0] = float(os.environ.get("R_D", "2e-4"))       # derD (throttle rate)
-    R[1, 1] = float(os.environ.get("R_DELTA", "2e-4"))   # derDelta (steering rate)
-    print(f"[acados] R_D={R[0,0]:.1e}  R_DELTA={R[1,1]:.1e}", flush=True)
-
-    Qe = np.diag([
-        5e-5,   # s
-        1e-4,   # n
-        1e-5,   # alpha
-        0.0,    # v
-        0.0,    # D
-        0.0,    # delta
-    ])
+    # 가중치는 mpc/cost_weights.py 에서 환경변수로 조절.
+    # 아무것도 안 주면 기존 하드코딩 값과 완전히 동일하다.
+    Q, R, Qe = get_weights(nu)
 
     ocp.cost.W   = unscale * scipy.linalg.block_diag(Q, R)
     ocp.cost.W_e = Qe / unscale

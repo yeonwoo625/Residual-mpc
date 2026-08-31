@@ -25,7 +25,7 @@ TruckMaker(8x4 Actros) Frenet kinematic MPC + 학습 잔차(residual)로, **적�
 Hockenheim(R_min 38 m) 12 m/s. 급코너(a_y>2)에서 Δn RMS가 무게 따라 단조 증가:
 32k 0.090 → 56k 0.110, **corr(mass, Δn)=+0.992**. 조향 δ는 무게를 모르는 kinematic이 정하므로
 무게가 제어에 안 새어듦 → 여기선 조건화가 물리적으로 의미 있음.
-
+ㅆ
 ### (c) 순진한 잔차 주입은 불안정
 잔차의 거친 Jacobian이 조향↔편차 되먹임 루프를 만들어 진동(조향 스텝변화 nominal의 30배) →
 이탈. scale·jac_reg 튜닝으로도 못 잡음.
@@ -45,6 +45,13 @@ Hockenheim(R_min 38 m) 12 m/s. 급코너(a_y>2)에서 Δn RMS가 무게 따라 �
 → **목표 2개 달성**: 잔차 MPC가 nominal을 크게 개선, MLP는 무게를 입력으로 받음.
 - scale 0.5는 과보정으로 조향 떨림(1.05°) 발생 → **scale 0.3에서 떨림 0.24°로 해결 + 추종도 더 좋아짐**.
 - `R_DELTA`(조향율 벌점)는 inter-solve chatter엔 효과 없었음 → scale로 해결.
+  > ⚠️ **2026-08-26 정정:** 이 결론은 재검토가 필요하다. 당시 `mpc_solver_residual.py`는
+  > 자체 OCP를 만들면서 `R[1,1]=2e-4`를 **하드코딩**하고 있었다(`acados_settings.py`의
+  > `R_DELTA` env는 nominal 경로에만 적용). 즉 **잔차 MPC 실행에서는 `R_DELTA`가
+  > 애초에 반영되지 않았을 가능성이 높다** — "효과 없음"이 아니라 "적용 안 됨".
+  > 현재는 `mpc/cost_weights.py`로 두 경로가 같은 가중치를 쓰므로 재확인 가능.
+  > (`docs/R_sweep_experiment_design.md`의 스윕은 실제로 수행되지 않았다 —
+  > 로그가 `R_1e-3.npy` 15스텝/1.4 m 하나뿐이다.)
 
 ## 5. 재현 레시피
 ```bash

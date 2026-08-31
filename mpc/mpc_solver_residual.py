@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from acados_settings import acados_settings
 from residual_model_wrapper import load_normalized_model
 from kappa_feature_selector import KappaAwareFeatureSelector
+from cost_weights import get_weights
 
 # l4acados imports
 from l4acados.controllers import ResidualLearningMPC
@@ -145,11 +146,8 @@ class MPCSolverResidual:
         ocp.cost.cost_type_e = "LINEAR_LS"
         unscale = N / Tf
         
-        Q = np.diag([1e-5, 1e-4, 1e-5, 1e-3, 0.0, 0.0])
-        R = np.eye(nu)
-        R[0, 0] = 2e-4
-        R[1, 1] = 2e-4
-        Qe = np.diag([5e-5, 1e-4, 1e-5, 0.0, 0.0, 0.0])
+        # nominal(acados_settings.py)과 동일한 가중치 모듈 — 공정 비교를 위해 공유.
+        Q, R, Qe = get_weights(nu)
         
         ocp.cost.W = unscale * scipy.linalg.block_diag(Q, R)
         ocp.cost.W_e = Qe / unscale

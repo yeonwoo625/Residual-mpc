@@ -26,6 +26,7 @@
 | `fig_channel_learnability.mat` | `results/channel_learnability.py` | 채널별 달성치 vs noise ceiling. 횡 1.6% / 종 50.1% 설명 불가 → **종방향은 원리적 학습 불가** | `plot_channel_learnability.m` |
 | `figT7_authority.mat` | (세션 스크립트) | 조향 권한 ‖∂n_N/∂δ‖를 3개 주행(ff/js05/js10) 궤적 전체에서 계산. 중첩 struct (`S.js05.auth_nominal` 식) | `plot_figT7_authority.m` |
 | `figT7_simple.mat` | 〃 | 위에서 js05 하나만 평탄한 벡터 5개로 뽑은 것 (`s, auth_off, auth_on, jitter_off, jitter_on`) | `plot_figT7_simple.m` |
+| `fig_b1_summary.mat` | `results/b1_summary.py` | B1 실험 종합 — 속도 스윕/가중치 스윕/적재 검증/게인×잔차세기. struct 4개 (`speed`, `qn_sweep`, `payload`, `interaction`) | `plot_b1_summary.m` |
 
 > ⚠️ `figT7_authority.mat`는 기존 `results/figures/figT7_authority_collapse.png`의 **26% 붕괴를 재현하지 않는다.**
 > 그 값은 단일 작동점(12 m/s) 결과이고, 궤적 전체로는 4~141%로 요동친다(중앙값 67~74%).
@@ -115,6 +116,7 @@
 | `plot_channel_learnability.m` | 채널별 달성치 막대 + noise ceiling 가로선 |
 | `plot_figT7_simple.m` | 조향 권한과 스텝 간 요동 (평탄 벡터 버전, 권장) |
 | `plot_figT7_authority.m` | 위와 같으나 주행 3개 선택 가능 + 급코너 음영 |
+| `plot_b1_summary.m` | B1 종합 — 속도별 nominal vs residual, 가중치 스윕, 적재 검증 (그림 2장) |
 
 > 색 규약(신규 4개): **파랑 `[0.12 0.47 0.71]` / 주황 `[0.90 0.49 0.13]`**. 기존 그림의 초록/빨강은
 > 적록색약 D형에서 ΔE 6.5로 구분되지 않아(파랑/주황은 33.8) 신규 그림부터 바꿨다.
