@@ -189,6 +189,15 @@ class MPCSolverResidual:
         ocp.solver_options.nlp_solver_type = "SQP_RTI"
         ocp.solver_options.hessian_approx = "GAUSS_NEWTON"
         ocp.solver_options.levenberg_marquardt = 1e-3
+        # l4acados는 nlp_solver_max_iter 만큼 preparation/feedback을 무조건 반복한다
+        # (rti_log_residuals가 꺼져 있어 조기 종료가 없다). acados 기본값 100을 그대로
+        # 두면 제어 1스텝마다 SQP를 100번 돌아 solve가 ~110ms(주행 중 계측)까지 늘어나
+        # 10Hz 예산을 넘긴다. 측정해 보면 10회에서 이미 수렴해 100회 해와 조향 명령이
+        # 0.002deg 이내로 같다 -- 나머지 90회는 수렴한 문제를 다시 푸는 순수 낭비다.
+        # 10회로 두면 해는 그대로이면서 solve가 88.5ms -> 9.2ms (offline 계측).
+        # SQP_ITER=1 은 nominal(SQP_RTI 1회)과 계산량을 맞춘 진짜 RTI 구성(0.99ms)이나
+        # 해가 달라지므로 주행 재검증이 필요하다.
+        ocp.solver_options.nlp_solver_max_iter = int(os.environ.get("SQP_ITER", "10"))
         
         self.ocp = ocp
         self.constraint = constraint

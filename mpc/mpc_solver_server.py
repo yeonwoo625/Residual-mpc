@@ -14,6 +14,7 @@ Env: REFERENCE_PATH (.npy waypoints), TARGET_SPEED, STEER_RATIO, MPC_SOCK.
 import os
 import socket
 import struct
+import time
 import numpy as np
 
 from reference_utils import (
@@ -92,8 +93,23 @@ def main():
                   f"(|n| mean={np.abs(arr[:,1]).mean():.3f} max={np.abs(arr[:,1]).max():.3f})",
                   flush=True)
 
+    # solve 시간 계측 (LOG_SOLVETIME=path 를 주면 매 solve 의 ms 를 저장).
+    # nominal vs residual 연산량 비교용. 미설정이면 아무 것도 하지 않는다.
+    LOG_SOLVETIME = os.environ.get("LOG_SOLVETIME", "")
+    solve_ms = []
+    print(f"[server] LOG_SOLVETIME = {LOG_SOLVETIME or '(미설정)'}", flush=True)
+
+    def save_solvetime():
+        if not LOG_SOLVETIME or not solve_ms:
+            return
+        arr = np.array(solve_ms)
+        np.save(LOG_SOLVETIME, arr)
+        print(f"[server] solve time: n={len(arr)} median={np.median(arr):.1f}ms "
+              f"mean={arr.mean():.1f} p95={np.percentile(arr,95):.1f} max={arr.max():.1f} "
+              f"-> {LOG_SOLVETIME}", flush=True)
+
     import signal as _sig
-    _sig.signal(_sig.SIGINT, lambda *a: (save_traj(), exit(0)))
+    _sig.signal(_sig.SIGINT, lambda *a: (save_traj(), save_solvetime(), exit(0)))
 
     if os.path.exists(SOCK):
         os.remove(SOCK)
@@ -123,7 +139,10 @@ def main():
                     # solve 내부(l4acados/acados/모델)가 off-distribution 상태에서
                     # 예외를 던질 수 있다. 잡아서 마지막 제어를 유지 -> 서버 안 죽음.
                     try:
+                        _t0 = time.perf_counter()
                         D, delta, status = mpc.solve(x0)
+                        if LOG_SOLVETIME:
+                            solve_ms.append((time.perf_counter() - _t0) * 1000.0)
                     except Exception as e:
                         if n_solve % 10 == 0:
                             print(f"[server] solve failed ({e}); holding last control",
@@ -154,6 +173,7 @@ def main():
         finally:
             conn.close()
             save_traj()
+            save_solvetime()
             print("[server] relay disconnected, waiting for next", flush=True)
 
 
