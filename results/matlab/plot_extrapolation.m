@@ -1,92 +1,97 @@
-% plot_extrapolation.m — 학습 분포 밖(외삽)에서의 잔차 보정
+% 외삽 일반화 - 학습 속도 상한 밖에서도 잔차 보정이 작동하는가
 %
-% (a) 속도 스윕: 급코너 오차 nominal vs residual, 학습 상한 표시
-% (b) v=14 의 속도 분포가 학습 데이터를 넘어선 정도
-% (c) 개선율과 채터 감소
+% 기존 일반화 주장(적재, 미학습 트랙)은 전부 학습 분포 '안쪽'이었다.
+% 학습 데이터의 속도 최대값은 12.234 m/s 이고, v=14 주행은 14.38 m/s 까지
+% 올라가 상한을 17.5% 초과한다. 그 조건에서도 잔차가 이긴다.
+%   급코너 RMS  nominal 2.138 -> residual 1.211  (43.4% 감소)
+%   조향 채터   0.0620 -> 0.0382 (38% 감소), 양쪽 완주
 %
-% 데이터: fig_extrapolation.mat  (results/extrapolation_summary.py 로 생성)
+% 데이터: fig_extrapolation.mat  (results/extrapolation_summary.py 가 생성)
+% 실행:   results/matlab/ 폴더 안에서 `plot_extrapolation`
+% 요구:   base MATLAB 만 (툴박스 불필요). R2013a 이상.
 
-clear; close all;
-load('fig_extrapolation.mat');
+clear; close all
+load('fig_extrapolation.mat')
 
-BLUE = [0.12 0.47 0.71];
-ORNG = [0.90 0.49 0.13];
+NOM  = [0.12 0.47 0.71];
+RES  = [0.90 0.49 0.13];
 GREY = [0.55 0.55 0.55];
-SHADE= [0.93 0.93 0.93];
+SHAD = [0.94 0.94 0.94];
 
 vt   = speed.v_target(:);
 vmax = train_v_max;
 
-figure('Color','w','Position',[100 100 1240 360]);
+figure('Color','w','Position',[80 80 1280 380])
 
-% ------------------------------------------------- (a) 속도별 급코너 오차
-subplot(1,3,1); hold on; box on;
-yl = [0 2.5];
-% 학습 상한 밖 영역 음영
-patch([vmax 15 15 vmax], [yl(1) yl(1) yl(2) yl(2)], SHADE, ...
-      'EdgeColor','none');
-plot([vmax vmax], yl, '--', 'Color', GREY, 'LineWidth', 1.4);
-text(vmax+0.12, yl(2)*0.94, sprintf('학습 상한 %.1f m/s', vmax), ...
-     'Color', GREY, 'FontSize', 9);
-text(14, yl(2)*0.06, '외삽', 'Color', GREY, 'FontSize', 10, ...
+%% (a) 속도별 급코너 오차 - 학습 상한 밖에서도 유지되는가
+subplot(1,3,1); hold on; box off
+set(gca,'FontSize',10,'TickDir','out','YGrid','on', ...
+        'GridColor',[.85 .85 .85],'GridAlpha',1,'Layer','bottom')
+YL = [0 2.6];
+patch([vmax 15.2 15.2 vmax], [YL(1) YL(1) YL(2) YL(2)], SHAD, 'EdgeColor','none');
+plot([vmax vmax], YL, '--', 'Color', GREY, 'LineWidth', 1.6);
+text(vmax-0.15, YL(2)*0.96, sprintf('training limit  %.2f m/s', vmax), ...
+     'Color', GREY, 'FontSize', 9, 'HorizontalAlignment','right');
+text(13.9, YL(2)*0.06, 'extrapolation', 'Color', GREY, 'FontSize', 10, ...
      'HorizontalAlignment','center');
-h1 = plot(vt, speed.nom(:), '-o', 'Color', BLUE, 'LineWidth', 1.8, ...
-          'MarkerSize', 6, 'MarkerFaceColor', BLUE);
-h2 = plot(vt, speed.res(:), '-s', 'Color', ORNG, 'LineWidth', 1.8, ...
-          'MarkerSize', 6, 'MarkerFaceColor', ORNG);
+h1 = plot(vt, speed.nom(:), '-o', 'Color', NOM, 'LineWidth', 2, ...
+          'MarkerSize', 7, 'MarkerFaceColor', NOM);
+h2 = plot(vt, speed.res(:), '-s', 'Color', RES, 'LineWidth', 2, ...
+          'MarkerSize', 7, 'MarkerFaceColor', RES);
 for k = 1:numel(vt)
-    text(vt(k), speed.res(k)-0.16, sprintf('%.0f%%', speed.improve(k)), ...
-         'Color', ORNG, 'FontSize', 9, 'HorizontalAlignment','center');
+    text(vt(k), speed.res(k)-0.19, sprintf('-%.0f%%', speed.improve(k)), ...
+         'Color', RES, 'FontSize', 9, 'HorizontalAlignment','center');
 end
-legend([h1 h2], {'nominal','residual'}, 'Location','NorthWest', 'FontSize', 9);
-legend boxoff;
-set(gca,'FontSize',10,'XGrid','on','YGrid','on');
-xlim([9.4 15]); ylim(yl);
-xlabel('목표 속도 (m/s)'); ylabel('급코너 횡오차 RMS (m)');
-title('(a) 학습 상한을 넘어서도 유지', 'FontSize',11);
+legend([h1 h2], {'Nominal MPC','Residual MPC'}, 'Location','northwest', ...
+       'Box','off', 'FontSize', 9);
+xlim([9.4 15.2]); ylim(YL)
+xlabel('Target speed  [m/s]'); ylabel('Corner RMS lateral error  [m]')
+title('(a)  Holds beyond the training limit','FontSize',11,'FontWeight','normal')
 
-% ------------------------------------------------- (b) 속도 분포
-subplot(1,3,2); hold on; box on;
-c = hist.centers(:);
-yl2 = [0 max(hist.train)*1.15];
-patch([vmax 15 15 vmax], [yl2(1) yl2(1) yl2(2) yl2(2)], SHADE, 'EdgeColor','none');
-ht = plot(c, hist.train(:),   '-', 'Color', GREY, 'LineWidth', 2.0);
-hr = plot(c, hist.v14_res(:), '-', 'Color', ORNG, 'LineWidth', 1.8);
-hn = plot(c, hist.v14_nom(:), '-', 'Color', BLUE, 'LineWidth', 1.4);
-plot([vmax vmax], yl2, '--', 'Color', GREY, 'LineWidth', 1.4);
-legend([ht hn hr], {'학습 데이터','v=14 nominal','v=14 residual'}, ...
-       'Location','NorthWest', 'FontSize', 9);
-legend boxoff;
-set(gca,'FontSize',10,'XGrid','on','YGrid','on');
-xlim([8 15]); ylim(yl2);
-xlabel('속도 (m/s)'); ylabel('밀도');
-title('(b) v=14 는 학습 범위 밖에서 주행', 'FontSize',11);
+%% (b) 속도 분포 - v=14 가 실제로 학습 범위를 벗어났음을 보인다
+subplot(1,3,2); hold on; box off
+set(gca,'FontSize',10,'TickDir','out','YGrid','on', ...
+        'GridColor',[.85 .85 .85],'GridAlpha',1,'Layer','bottom')
+c  = vdist.centers(:);
+Y2 = [0 max(vdist.train)*1.12];
+patch([vmax 15.2 15.2 vmax], [Y2(1) Y2(1) Y2(2) Y2(2)], SHAD, 'EdgeColor','none');
+g1 = plot(c, vdist.train(:),   '-', 'Color', GREY, 'LineWidth', 2.4);
+g2 = plot(c, vdist.v14_nom(:), '-', 'Color', NOM,  'LineWidth', 1.6);
+g3 = plot(c, vdist.v14_res(:), '-', 'Color', RES,  'LineWidth', 2.0);
+plot([vmax vmax], Y2, '--', 'Color', GREY, 'LineWidth', 1.6);
+text(vmax-0.15, Y2(2)*0.96, sprintf('training limit  %.2f m/s', vmax), ...
+     'Color', GREY, 'FontSize', 9, 'HorizontalAlignment','right');
+legend([g1 g2 g3], {'training data','v=14  Nominal','v=14  Residual'}, ...
+       'Location','northwest', 'Box','off', 'FontSize', 9);
+xlim([8 15.2]); ylim(Y2)
+xlabel('Speed  [m/s]'); ylabel('Density')
+title('(b)  v=14 runs outside the training range','FontSize',11,'FontWeight','normal')
 
-% ------------------------------------------------- (c) 개선율 / 채터
-subplot(1,3,3); hold on; box on;
-chat_red = 100*(1 - speed.chat_res(:)./speed.chat_nom(:));
+%% (c) 오차와 채터가 함께 줄었는가
+subplot(1,3,3); hold on; box off
+set(gca,'FontSize',10,'TickDir','out','YGrid','on', ...
+        'GridColor',[.85 .85 .85],'GridAlpha',1,'Layer','bottom')
+chat = 100*(1 - speed.chat_res(:)./speed.chat_nom(:));
 w = 0.34; x = (1:numel(vt))';
-bar(x-w/2, speed.improve(:), w, 'FaceColor', ORNG, 'EdgeColor','none');
-bar(x+w/2, chat_red,         w, 'FaceColor', BLUE, 'EdgeColor','none');
+b1 = bar(x-w/2, speed.improve(:), w, 'FaceColor', RES, 'EdgeColor','none');
+b2 = bar(x+w/2, chat,             w, 'FaceColor', NOM, 'EdgeColor','none');
 plot([0.4 numel(vt)+0.6], [0 0], '-', 'Color', [0.3 0.3 0.3], 'LineWidth', 0.8);
 for k = 1:numel(vt)
-    text(x(k)-w/2, speed.improve(k)+4, sprintf('%.0f', speed.improve(k)), ...
-         'HorizontalAlignment','center','FontSize',9,'Color',ORNG);
+    text(x(k)-w/2, speed.improve(k)+5, sprintf('%.0f', speed.improve(k)), ...
+         'HorizontalAlignment','center','FontSize',9,'Color',RES);
 end
-% 외삽 조건 표시
-plot(numel(vt), -95, '^', 'Color', GREY, 'MarkerSize', 7, ...
-     'MarkerFaceColor', GREY, 'Clipping','off');
-text(numel(vt), -112, '외삽', 'HorizontalAlignment','center', ...
+% 마지막 막대 = 외삽 조건
+xl = get(gca,'XLim');
+text(numel(vt), 92, 'extrapolation', 'HorizontalAlignment','center', ...
      'FontSize',9,'Color',GREY);
-legend({'급코너 오차 감소','조향 채터 감소'}, 'Location','SouthWest', 'FontSize', 9);
-legend boxoff;
-set(gca,'XTick',1:numel(vt), 'XTickLabel', ...
-        arrayfun(@(v) sprintf('%.1f',v), vt, 'UniformOutput', false), ...
-        'FontSize',10,'YGrid','on');
-xlim([0.4 numel(vt)+0.6]); ylim([-100 100]);
-xlabel('목표 속도 (m/s)'); ylabel('nominal 대비 감소율 (%)');
-title('(c) 오차와 채터 동시 감소', 'FontSize',11);
+legend([b1 b2], {'Corner error reduction','Steering chatter reduction'}, ...
+       'Location','southwest', 'Box','off', 'FontSize', 9);
+set(gca,'XTick',1:numel(vt),'XTickLabel', ...
+        arrayfun(@(v) sprintf('%.1f',v), vt, 'UniformOutput', false))
+xlim([0.4 numel(vt)+0.6]); ylim([-100 100])
+xlabel('Target speed  [m/s]'); ylabel('Reduction vs nominal  [%]')
+title('(c)  Error and chatter both drop','FontSize',11,'FontWeight','normal')
 
-set(gcf,'PaperPositionMode','auto');
-print(gcf, '-dpng', '-r200', 'fig_extrapolation.png');
-fprintf('saved fig_extrapolation.png\n');
+set(gcf,'PaperPositionMode','auto')
+print(gcf,'-dpng','-r200','fig_extrapolation.png')
+fprintf('saved fig_extrapolation.png\n')

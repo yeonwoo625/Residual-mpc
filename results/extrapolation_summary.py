@@ -132,6 +132,7 @@ def main():
     # 속도 분포 (그림 (c) 용) — 공통 격자에서의 히스토그램
     edges = np.linspace(2.0, 15.0, 66)
     ctr = 0.5 * (edges[:-1] + edges[1:])
+    # 변수명 hist 는 MATLAB 내장 함수와 겹치므로 vdist 로 저장한다
     hists = {"centers": ctr,
              "train": np.histogram(tr[:, 2], edges, density=True)[0]}
     for tag in ("v12_res", "v14_nom", "v14_res"):
@@ -139,7 +140,7 @@ def main():
         hists[tag] = np.histogram(Xh[:, 2], edges, density=True)[0]
 
     savemat(OUT, {
-        "hist": hists,
+        "vdist": hists,
         "speed":  {k: np.array(v) for k, v in A.items()},
         "ood":    {k: (np.array(v, dtype=object) if k == "label" else np.array(v))
                    for k, v in B.items()},
