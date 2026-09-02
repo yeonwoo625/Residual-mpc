@@ -41,14 +41,30 @@ from eval_b1 import _kappa_fn, estimate_dt                    # noqa: E402
 
 OUT = os.path.join(HERE, "matlab", "fig_tracking_rmse.mat")
 
-# (표시 이름, nominal 파일, residual 파일, 목표속도)
+# (표시 이름, nominal 파일, residual 파일, 목표속도, 축 이름)
+# 논문의 일반화 축(속도 / 적재 / 트랙 / 마찰 / 조향제약)이 한 표에 다 들어가도록
+# 골랐다. 완주하지 못한 주행(저마찰 v=10 계열)은 RMSE 비교가 무의미하므로
+# 제외하고 pass/fail 로 따로 보고한다(results/mu03/README.md).
 SCEN = [
-    ("Hockenheim  v=10",   "b1/v10_nom.npy",       "b1/v10_res.npy",       10.0),
-    ("Hockenheim  v=11.5", "b1/v115_nom.npy",      "b1/v115_res.npy",      11.5),
-    ("Hockenheim  v=12",   "b1/v12_nom.npy",       "b1/v12_res.npy",       12.0),
-    ("Hockenheim  v=14",   "b1/v14_nom.npy",       "b1/v14_res.npy",       14.0),
-    ("Highway No.1",       "highway/hw_nom.npy",   "highway/hw_res.npy",   12.0),
-    ("Low friction  mu=0.3", "mu03/mu03_v9_nom.npy", "mu03/mu03_v9_res.npy", 9.0),
+    # 속도 - v=14 는 학습 상한(12.23 m/s) 밖 외삽이자 양쪽 제어율이 같은 유일한 행
+    ("Hockenheim  v=10",     "b1/v10_nom.npy",   "b1/v10_res.npy",   10.0, "Speed"),
+    ("Hockenheim  v=11.5",   "b1/v115_nom.npy",  "b1/v115_res.npy",  11.5, "Speed"),
+    ("Hockenheim  v=12",     "b1/v12_nom.npy",   "b1/v12_res.npy",   12.0, "Speed"),
+    ("Hockenheim  v=14",     "b1/v14_nom.npy",   "b1/v14_res.npy",   14.0, "Speed"),
+    # 적재 - 논문 주제축. v=10, Q_n=1e-4, 잔차는 조건화 없는 6차원 모델.
+    # 48 t 행은 위 "Hockenheim v=10" 과 **같은 주행**이다(traj_nom_48.npy 가
+    # b1/v10_nom.npy 와 바이트 동일). 기준 조건이 두 축에 함께 등장하는 것이며
+    # 중복 측정이 아니다.
+    ("Payload  32 t",        "traj_nom_32.npy",  "traj_ff_32.npy",   10.0, "Payload"),
+    ("Payload  48 t",        "traj_nom_48.npy",  "traj_ff_48.npy",   10.0, "Payload"),
+    ("Payload  56 t",        "traj_nom_56.npy",  "traj_ff_56.npy",   10.0, "Payload"),
+    # 트랙 - 재학습 없이 미학습 도로
+    ("Highway No.1",         "highway/hw_nom.npy", "highway/hw_res.npy", 12.0, "Track"),
+    # 마찰 - 완주한 v=9 만 (v=10 은 양쪽 한계라 별도 보고)
+    ("Low friction  mu=0.3", "mu03/mu03_v9_nom.npy", "mu03/mu03_v9_res.npy", 9.0, "Friction"),
+    # 조향각속도 제약 15 deg/s - 나머지 행은 전부 기본값 57.3 deg/s
+    ("15 deg/s  v=10",       "ddelta/v10_nom.npy", "ddelta/v10_res.npy", 10.0, "Steer rate"),
+    ("15 deg/s  v=12",       "ddelta/v12_nom.npy", "ddelta/v12_res.npy", 12.0, "Steer rate"),
 ]
 METHODS = ["Nominal MPC", "Residual MPC"]
 
@@ -82,20 +98,23 @@ def main():
     VR = np.zeros_like(X); LAP = np.zeros_like(X); RATE = np.zeros_like(X)
 
     print("Tracking RMSE Comparison\n")
-    print(f"{'Scenario':<22}{'Method':<14}{'X (m)':>9}{'Y (m)':>9}"
+    print(f"{'Axis':<12}{'Scenario':<22}{'Method':<14}{'X (m)':>9}{'Y (m)':>9}"
           f"{'Yaw (rad)':>11}{'v (m/s)':>9}{'lap (s)':>9}{'rate':>8}")
-    print("-" * 91)
-    for i, (name, fn, fr, vt) in enumerate(SCEN):
+    print("-" * 103)
+    for i, (name, fn, fr, vt, axis) in enumerate(SCEN):
         for j, f in enumerate((fn, fr)):
             m = metrics(os.path.join(HERE, f), vt)
             X[i, j], Y[i, j], YAW[i, j] = m["x"], m["y"], m["yaw"]
             VR[i, j], LAP[i, j], RATE[i, j] = m["v_rms"], m["lap"], m["rate"]
             lbl = name if j == 0 else ""
-            print(f"{lbl:<22}{METHODS[j]:<14}{m['x']:9.2f}{m['y']:9.3f}"
+            ax = axis if j == 0 else ""
+            print(f"{ax:<12}{lbl:<22}{METHODS[j]:<14}{m['x']:9.2f}{m['y']:9.3f}"
                   f"{m['yaw']:11.4f}{m['v_rms']:9.3f}{m['lap']:9.1f}{m['rate']:7.1f}Hz")
         print()
 
     print("주의")
+    print("  · Payload 48 t 행은 Hockenheim v=10 행과 같은 주행이다(기준 조건이")
+    print("    속도축과 적재축에 함께 등장). 독립 반복이 아니다.")
     print("  · X 는 path following 구조상 누적된다(절대 시간 기준 없음). Y 와 직접")
     print("    비교하거나 trajectory tracking 논문의 X 와 나란히 놓으면 안 된다.")
     print("    종방향 성능은 v(속도추종 RMSE)와 lap 으로 읽는 편이 정확하다.")
@@ -108,6 +127,8 @@ def main():
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     savemat(OUT, dict(
         scenario = np.array([s[0] for s in SCEN], dtype=object),
+        # 필드명 axis 는 MATLAB 내장 함수(axis off ...)와 겹치므로 gen_axis 로 둔다
+        gen_axis = np.array([s[4] for s in SCEN], dtype=object),
         method   = np.array(METHODS, dtype=object),
         v_target = np.array([s[3] for s in SCEN]),
         x_rmse   = X,        # (조건, 방법) 방법 0=nominal 1=residual
