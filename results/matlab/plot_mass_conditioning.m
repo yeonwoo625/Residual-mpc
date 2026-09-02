@@ -29,6 +29,14 @@ mc = mass_cloop(:);  nC = numel(mc);   xc = (1:nC)';
 w  = 0.24;
 DN = 2; DA = 3;             % 채널: 1=ds 2=dn 3=dalpha 4=dv
 
+% NaN 안전 평균 (플라시보는 48t 만, 40t 는 시드 1개라 빈 칸이 있다).
+% nanmean 은 Statistics Toolbox 함수라 쓰지 않는다 - base MATLAB 만으로 계산한다.
+Zs  = cloop_err;  Zs(isnan(Zs)) = 0;
+SUM = squeeze(sum(Zs, 3));                      % (적재, 모델, 지표)
+CNT = squeeze(sum(~isnan(cloop_err), 3));
+CM  = SUM ./ max(CNT, 1);
+CM(CNT == 0) = NaN;
+
 figure('Color','w','Position',[50 40 1060 720])
 
 %% (a)(b) 예측 오차 - 무게를 알려줘도 안 줄어든다
@@ -76,9 +84,7 @@ for k = 1:2
     subplot(2,2,2+k); hold on; box off
     set(gca,'FontSize',10,'TickDir','out','YGrid','on', ...
             'GridColor',[.85 .85 .85],'GridAlpha',1,'Layer','bottom')
-    c0 = nanmean(squeeze(cloop_err(:,1,:,ci)),2);
-    c1 = nanmean(squeeze(cloop_err(:,2,:,ci)),2);
-    c2 = nanmean(squeeze(cloop_err(:,3,:,ci)),2);
+    c0 = CM(:,1,ci);  c1 = CM(:,2,ci);  c2 = CM(:,3,ci);
     h1 = bar(xc-w, c0, w, 'FaceColor', NOM, 'EdgeColor','none');
     h2 = bar(xc,   c1, w, 'FaceColor', RES, 'EdgeColor','none');
     h3 = bar(xc+w, c2, w, 'FaceColor', PLA, 'EdgeColor','none');

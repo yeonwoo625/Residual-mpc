@@ -133,6 +133,11 @@
 | `plot_openloop.m` | **개루프 예측 오차** — 모델 정확도 자체 + 학습분포에서 멀어질 때의 붕괴 (2칸) |
 | `plot_mass_conditioning.m` | **적재 조건화 근거** — 32/40/48/56t 예측오차 + 폐루프 + 플라시보 (3칸) |
 
+> **툴박스 금지:** base MATLAB 만 쓴다. `nanmean`/`nanstd`/`prctile`/`boxplot` 등
+> Statistics Toolbox 함수는 쓰지 않는다 — 다른 PC에 툴박스가 없으면 스크립트가
+> 죽는다. NaN 평균이 필요하면 `sum(Z.*~isnan(Z))./sum(~isnan(Z))` 로 직접 계산한다.
+> `corrcoef` 는 base 라 사용 가능. `yline`/`tiledlayout`/`compose` 는 신버전 전용이라 금지.
+
 > **스크립트 규약:** 그림 파일을 저장하지 않는다(`print`/`saveas` 없음). 실행하면 화면에만 띄우고
 > 저장은 사용자가 한다. 축 라벨·범례·제목은 **영문**으로 쓴다 — MATLAB 기본 폰트에서 한글이
 > 깨질 수 있다. 설명은 파일 상단 주석에 한글로 둔다.
