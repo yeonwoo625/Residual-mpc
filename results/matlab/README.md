@@ -30,6 +30,7 @@
 | `fig_payload_observability.mat` | `results/payload_observability.py` | 질량이 왜 입력으로 불필요한가 — 상태에서 질량 복원(R²=0.79) + 입력 고정 시 추가 설명력(0.3%) | `plot_payload_observability.m` |
 | `fig_safety.mat` | `results/safety_failure_modes.py` | 안전성 — 포화 한계(clamp) 작동 빈도(정상 5~7% vs 불안정 18.6%)와 조향 채터의 상관(r=+0.995), 실패 모드 4종 | `plot_safety.m` |
 | `fig_friction.mat` | `results/friction_summary.py` | 저마찰(μ=0.3) — 마찰 사용률 73%에서 잔차 34% 개선, 90%에서는 조향 포화로 전부 이탈. 조향 실효이득 0.65→0.37 | `plot_friction.m` |
+| `fig_ddelta.mat` | `results/ddelta_summary.py` | 조향 각속도 제약 민감도 — 57.3→15 deg/s 로 3.8배 강화해도 개선율 유지(58→54%, 17→19%), 채터 39~48% 감소 | `plot_ddelta.m` |
 | `fig_highway.mat` + `fig_highway_traj.mat` | `results/highway_summary.py` | 미학습 트랙(USA Highway No.1) — 재학습 없이 적용. nominal 은 차선 여유 초과로 625 m 이탈, residual 은 완주(최대오차 −75%) | `plot_highway.m` |
 
 > ⚠️ `figT7_authority.mat`는 기존 `results/figures/figT7_authority_collapse.png`의 **26% 붕괴를 재현하지 않는다.**
@@ -125,6 +126,7 @@
 | `plot_safety.m` | 포화 빈도 막대 + 채터와의 상관 산점 (이상 징후 지표) |
 | `plot_friction.m` | 저마찰 — 완주 조건 성능 비교 + 사용률 대 조향 실효이득 산점 |
 | `plot_highway.m` | 미학습 트랙 — 최대오차 대 차선여유 막대 + s별 |n| 궤적 |
+| `plot_ddelta.m` | 조향 각속도 제약 민감도 — 개선율 유지 + 채터 감소 막대 |
 
 > 색 규약(신규 4개): **파랑 `[0.12 0.47 0.71]` / 주황 `[0.90 0.49 0.13]`**. 기존 그림의 초록/빨강은
 > 적록색약 D형에서 ΔE 6.5로 구분되지 않아(파랑/주황은 33.8) 신규 그림부터 바꿨다.
