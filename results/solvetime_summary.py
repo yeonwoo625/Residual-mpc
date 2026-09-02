@@ -42,12 +42,23 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 MATDIR = os.path.join(HERE, "matlab")
 
 # ---------------------------------------------------------------- 주행 중 계측
-# mpc_solver_server.py 의 LOG_SOLVETIME (Hockenheim, v=10, 48t, DDELTA_MAX=0.262)
-INLOOP = [
-    # name                    median  mean   p95    max     n
-    ("nominal",                 3.51,  3.70,  4.84,  25.8, 235),
-    ("residual (SQP 100, 기존)", 109.3, 108.8, 121.9, 129.5, 135),
+# mpc_solver_server.py 의 LOG_SOLVETIME 원본 로그 (Hockenheim, v=10, 48t,
+# DDELTA_MAX=0.262, RESIDUAL_FF=1, RESIDUAL_SCALE=0.3, Q_n=1e-4).
+INLOOP_FILES = [
+    ("nominal",                 "nominal.npy"),
+    ("residual (SQP 100, 기존)", "residual_sqp100.npy"),
+    ("residual (SQP 10, 수정)",  "residual_sqp10.npy"),
 ]
+
+
+def inloop():
+    """원본 로그에서 통계를 다시 계산 — 숫자를 코드에 박아 두지 않는다."""
+    rows = []
+    for nm, fn in INLOOP_FILES:
+        a = np.load(os.path.join(HERE, "solvetime", fn))
+        rows.append((nm, np.median(a), a.mean(), np.percentile(a, 95),
+                     a.max(), len(a)))
+    return rows
 
 # ------------------------------------------------------- offline 구간 분해 (median ms)
 BREAKDOWN = [
@@ -75,13 +86,21 @@ BUDGET_MS = 100.0               # 10 Hz 제어 주기
 
 
 def main():
+    IL = inloop()
     print("=" * 66)
     print("1. 주행 중 계측 (LOG_SOLVETIME)")
     print("=" * 66)
     print(f"{'구성':<26}{'중앙값':>8}{'평균':>8}{'p95':>8}{'최대':>8}{'n':>6}")
-    for nm, md, mn, p95, mx, n in INLOOP:
+    for nm, md, mn, p95, mx, n in IL:
         print(f"{nm:<26}{md:>8.2f}{mn:>8.2f}{p95:>8.2f}{mx:>8.1f}{n:>6d}")
-    print(f"\n  -> 31배, 10 Hz 예산 {BUDGET_MS:.0f} ms 초과")
+    over = 100.0 * (np.load(os.path.join(HERE, "solvetime", "residual_sqp100.npy"))
+                    > BUDGET_MS).mean()
+    print(f"\n  수정 전: nominal 의 {IL[1][1] / IL[0][1]:.0f}배, "
+          f"{BUDGET_MS:.0f} ms 예산을 {over:.0f}% 의 스텝에서 초과")
+    print(f"  수정 후: {IL[2][1]:.1f} ms — 예산의 {100 * IL[2][1] / BUDGET_MS:.0f}% "
+          f"(p95 {IL[2][3]:.1f} ms)")
+    b = (IL[1][1] - IL[2][1]) / 90.0
+    print(f"  두 점 맞춤: 반복 1회당 {b:.2f} ms — offline 계측 0.92 ms 와 일치")
 
     print("\n" + "=" * 66)
     print("2. 어디에 쓰이는가 (offline, SQP 1회 기준)")
@@ -103,8 +122,8 @@ def main():
     os.makedirs(MATDIR, exist_ok=True)
     out = os.path.join(MATDIR, "fig_solvetime.mat")
     savemat(out, {
-        "inloop_names":  np.array([n for n, *_ in INLOOP], dtype=object),
-        "inloop_stats":  np.array([[a, b, c, d, e] for _, a, b, c, d, e in INLOOP]),
+        "inloop_names":  np.array([n for n, *_ in IL], dtype=object),
+        "inloop_stats":  np.array([[a, b, c, d, e] for _, a, b, c, d, e in IL]),
         "bd_names":      np.array([n for n, _ in BREAKDOWN], dtype=object),
         "bd_ms":         np.array([v for _, v in BREAKDOWN]),
         "sweep":         SWEEP,

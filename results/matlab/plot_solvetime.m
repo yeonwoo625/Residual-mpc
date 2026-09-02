@@ -16,22 +16,27 @@ GREY = [0.55 0.55 0.55];
 figure('Color','w','Position',[100 100 1240 360]);
 
 % ---------------------------------------------------------------- (a) 주행 중 계측
+% 막대 = 중앙값, 수염 = p95. 3개 구성 전부 실제 주행 로그.
 subplot(1,3,1); hold on; box on;
-v = inloop_stats(:,1);                     % median
-bar(1, v(1), 0.55, 'FaceColor', BLUE, 'EdgeColor','none');
-bar(2, v(2), 0.55, 'FaceColor', ORNG, 'EdgeColor','none');
-plot([0.4 2.6], [budget_ms budget_ms], '--', 'Color', GREY, 'LineWidth', 1.4);
-text(2.55, budget_ms*1.13, '10 Hz 예산 100 ms', ...
-     'Color', GREY, 'FontSize', 9, 'HorizontalAlignment','right');
-for k = 1:2
-    text(k, v(k)*1.10, sprintf('%.1f ms', v(k)), ...
+med = inloop_stats(:,1);  p95 = inloop_stats(:,3);
+cols = [BLUE; ORNG; ORNG];
+for k = 1:3
+    bar(k, med(k), 0.55, 'FaceColor', cols(k,:), 'EdgeColor','none');
+    plot([k k], [med(k) p95(k)], '-', 'Color', [0.25 0.25 0.25], 'LineWidth', 1.1);
+    plot(k, p95(k), '_', 'Color', [0.25 0.25 0.25], 'MarkerSize', 9, 'LineWidth', 1.1);
+    text(k, p95(k)*1.18, sprintf('%.1f', med(k)), ...
          'HorizontalAlignment','center', 'FontSize', 10, 'FontWeight','bold');
 end
-set(gca,'XTick',1:2,'XTickLabel',{'nominal','residual'},'YScale','log', ...
-        'FontSize',10,'YGrid','on');
-xlim([0.4 2.6]); ylim([1 400]);
-ylabel('solve 시간 (ms, 중앙값)');
-title('(a) 주행 중 계측 — 수정 전', 'FontSize',11);
+plot([0.4 3.6], [budget_ms budget_ms], '--', 'Color', GREY, 'LineWidth', 1.4);
+text(3.55, budget_ms*1.30, '10 Hz 예산 100 ms', ...
+     'Color', GREY, 'FontSize', 9, 'HorizontalAlignment','right');
+set(gca,'XTick',1:3,'XTickLabel',{'nominal','residual','residual'}, ...
+        'YScale','log','FontSize',10,'YGrid','on');
+text(2, 0.55, '수정 전', 'HorizontalAlignment','center','FontSize',9,'Color',ORNG);
+text(3, 0.55, '수정 후', 'HorizontalAlignment','center','FontSize',9,'Color',ORNG);
+xlim([0.4 3.6]); ylim([0.4 400]);
+ylabel('solve 시간 (ms) — 막대 중앙값, 수염 p95');
+title('(a) 주행 중 계측', 'FontSize',11);
 
 % ------------------------------------------------- (b) 반복 횟수 대 solve 시간
 subplot(1,3,2); hold on; box on;
