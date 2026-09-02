@@ -54,24 +54,30 @@ def main():
     print(f"  차선 폭 {LANE_W} m, 트럭 폭 {TRUCK_W} m  ->  좌우 여유 {MARGIN:.2f} m\n")
 
     print(f"{'':10s} {'완주':>5} {'거리':>8} {'평균|n|':>8} {'RMS|n|':>8} "
-          f"{'최대|n|':>8} {'여유대비':>8} {'채터':>8}")
-    print("-" * 72)
+          f"{'최대|n|':>8} {'여유대비':>8} {'RMS α':>8} {'최대 α':>8} {'채터':>8}")
+    print("-" * 90)
     rows = {}
     for f, l in [("hw_nom.npy", "nominal"), ("hw_res.npy", "residual")]:
         a = lap1(os.path.join(HW, f))
-        s, n, de = a[:, 0], a[:, 1], a[:, 5]
+        s, n, al, de = a[:, 0], a[:, 1], a[:, 2], a[:, 5]
         d = s.max() - s.min()
         done = d > 850
+        # alpha = 헤딩오차(yaw error, 경로 접선 대비 차체 방향). deg 로 보고한다.
         r = dict(dist=d, done=int(done), mean=np.abs(n).mean(),
                  rms=np.sqrt((n ** 2).mean()), max=np.abs(n).max(),
+                 a_mean=np.rad2deg(np.abs(al).mean()),
+                 a_rms=np.rad2deg(np.sqrt((al ** 2).mean())),
+                 a_max=np.rad2deg(np.abs(al).max()),
                  chatter=np.sqrt(np.mean((np.diff(de) / 0.1) ** 2)))
         print(f"{l:10s} {'O' if done else 'X':>5} {d:7.0f}m {r['mean']:8.3f} "
-              f"{r['rms']:8.3f} {r['max']:8.3f} {100*r['max']/MARGIN:7.0f}% {r['chatter']:8.4f}")
+              f"{r['rms']:8.3f} {r['max']:8.3f} {100*r['max']/MARGIN:7.0f}% "
+              f"{r['a_rms']:7.2f}° {r['a_max']:7.2f}° {r['chatter']:8.4f}")
         rows[l] = r
 
     n_, r_ = rows["nominal"], rows["residual"]
     print(f"\n  평균 오차 {100*(n_['mean']-r_['mean'])/n_['mean']:.0f}% 감소, "
-          f"최대 오차 {100*(n_['max']-r_['max'])/n_['max']:.0f}% 감소")
+          f"최대 오차 {100*(n_['max']-r_['max'])/n_['max']:.0f}% 감소, "
+          f"헤딩오차 RMS {100*(n_['a_rms']-r_['a_rms'])/n_['a_rms']:.0f}% 감소")
     print(f"  nominal 은 여유({MARGIN:.2f} m)를 {n_['max']/MARGIN:.2f}배 초과 -> 이탈")
     print(f"  residual 은 여유의 {100*r_['max']/MARGIN:.0f}% 만 사용 -> 완주")
 
@@ -85,6 +91,9 @@ def main():
         mean_n=np.array([n_["mean"], r_["mean"]]),
         rms_n=np.array([n_["rms"], r_["rms"]]),
         max_n=np.array([n_["max"], r_["max"]]),
+        mean_a=np.array([n_["a_mean"], r_["a_mean"]]),
+        rms_a=np.array([n_["a_rms"], r_["a_rms"]]),
+        max_a=np.array([n_["a_max"], r_["a_max"]]),
         chatter=np.array([n_["chatter"], r_["chatter"]]),
     ))
     print(f"\n저장: {OUT}")

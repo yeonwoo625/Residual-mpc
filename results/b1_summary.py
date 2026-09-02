@@ -43,16 +43,21 @@ def main():
     # ---------- A. 속도 스윕 (Q_n = 1e-4) ----------
     speeds = [(10.0, "v10"), (11.5, "v115"), (12.0, "v12"), (14.0, "v14")]
     print("A. 속도 스윕  (Q_n=1e-4 고정, 48t) — nominal vs residual")
-    print(f"{'목표v':>6} {'실제v':>7} {'nom':>7} {'res':>7} {'개선':>7} "
-          f"{'채터nom':>8} {'채터res':>8}")
-    A = {k: [] for k in "v_target v_actual nom res improve chat_nom chat_res".split()}
+    print(f"{'목표v':>6} {'실제v':>7} {'n_nom':>7} {'n_res':>7} {'n개선':>7} "
+          f"{'α_nom':>7} {'α_res':>7} {'α개선':>7} {'채터nom':>8} {'채터res':>8}")
+    A = {k: [] for k in ("v_target v_actual nom res improve "
+                         "a_nom a_res a_improve chat_nom chat_res").split()}
     for vt, tag in speeds:
         n, r = ev(f"{tag}_nom.npy"), ev(f"{tag}_res.npy")
         imp = 100 * (n["corner_rms"] - r["corner_rms"]) / n["corner_rms"]
+        # a_corner = 급코너 헤딩오차(yaw error) RMS [deg]
+        aimp = 100 * (n["a_corner"] - r["a_corner"]) / n["a_corner"]
         print(f"{vt:6.1f} {r['v_mean']:7.2f} {n['corner_rms']:7.3f} "
-              f"{r['corner_rms']:7.3f} {imp:6.1f}% {n['chatter']:8.4f} {r['chatter']:8.4f}")
-        for k, v in zip(A, [vt, r["v_mean"], n["corner_rms"], r["corner_rms"],
-                            imp, n["chatter"], r["chatter"]]):
+              f"{r['corner_rms']:7.3f} {imp:6.1f}% {n['a_corner']:7.2f} "
+              f"{r['a_corner']:7.2f} {aimp:6.1f}% {n['chatter']:8.4f} {r['chatter']:8.4f}")
+        for k, v in zip(A, [vt, r["v_mean"], n["corner_rms"], r["corner_rms"], imp,
+                            n["a_corner"], r["a_corner"], aimp,
+                            n["chatter"], r["chatter"]]):
             A[k].append(v)
     M["speed"] = {k: np.array(v) for k, v in A.items()}
 

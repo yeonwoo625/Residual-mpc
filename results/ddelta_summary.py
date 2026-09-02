@@ -41,31 +41,39 @@ def main():
             (12, TIGHT, "ddelta/v12_nom.npy", "ddelta/v12_res.npy")]
 
     print(f"조향 각속도 제약 민감도  (앞바퀴 기준, IPGDriver 최대 {IPG_MAX} deg/s)\n")
-    print(f"{'속도':>5} {'제약':>8} {'nom':>7} {'res':>7} {'개선':>7} "
-          f"{'채터nom':>9} {'채터res':>9}")
-    print("-" * 60)
+    print(f"{'속도':>5} {'제약':>8} {'n_nom':>7} {'n_res':>7} {'n개선':>7} "
+          f"{'α_nom':>7} {'α_res':>7} {'α개선':>7} {'채터nom':>9} {'채터res':>9}")
+    print("-" * 84)
     V, L, NOM, RES, IMP, CN, CR = [], [], [], [], [], [], []
+    AN, AR, AIMP = [], [], []
     for v, lim, fn, fr in runs:
         n = evaluate(os.path.join(HERE, fn), kf)
         r = evaluate(os.path.join(HERE, fr), kf)
         imp = 100 * (n["corner_rms"] - r["corner_rms"]) / n["corner_rms"]
+        # a_corner = 급코너 헤딩오차(yaw error) RMS [deg]
+        aimp = 100 * (n["a_corner"] - r["a_corner"]) / n["a_corner"]
         print(f"{v:4d} {lim:7.1f}° {n['corner_rms']:7.3f} {r['corner_rms']:7.3f} "
-              f"{imp:6.1f}% {n['chatter']:9.4f} {r['chatter']:9.4f}")
+              f"{imp:6.1f}% {n['a_corner']:7.2f} {r['a_corner']:7.2f} {aimp:6.1f}% "
+              f"{n['chatter']:9.4f} {r['chatter']:9.4f}")
         V.append(v); L.append(lim); NOM.append(n["corner_rms"]); RES.append(r["corner_rms"])
         IMP.append(imp); CN.append(n["chatter"]); CR.append(r["chatter"])
+        AN.append(n["a_corner"]); AR.append(r["a_corner"]); AIMP.append(aimp)
 
     V, L = np.array(V), np.array(L)
     IMP, CN, CR = np.array(IMP), np.array(CN), np.array(CR)
+    AN, AR, AIMP = np.array(AN), np.array(AR), np.array(AIMP)
     print("\n제약 강화(57.3 -> 15 deg/s)의 효과")
     for v in (10, 12):
         a = (V == v) & (L == LOOSE); b = (V == v) & (L == TIGHT)
-        print(f"  v={v}: 개선율 {IMP[a][0]:.1f}% -> {IMP[b][0]:.1f}%   "
+        print(f"  v={v}: 횡오차 개선 {IMP[a][0]:.1f}% -> {IMP[b][0]:.1f}%   "
+              f"헤딩오차 개선 {AIMP[a][0]:.1f}% -> {AIMP[b][0]:.1f}%   "
               f"채터(res) {CR[a][0]:.4f} -> {CR[b][0]:.4f} ({100*(CR[b][0]/CR[a][0]-1):+.0f}%)")
 
     savemat(os.path.join(HERE, "matlab", "fig_ddelta.mat"), dict(
         limit_loose=LOOSE, limit_tight=TIGHT, ipg_driver_max=IPG_MAX,
         v_target=V, limit=L, nom=np.array(NOM), res=np.array(RES),
         improve=IMP, chat_nom=CN, chat_res=CR,
+        a_nom=AN, a_res=AR, a_improve=AIMP,
     ))
     print(f"\n저장: {os.path.join(HERE,'matlab','fig_ddelta.mat')}")
 

@@ -61,7 +61,7 @@ def main():
     ]
     print("μ = 0.3 저마찰 주행 (48 t, Q_n=1e-4)\n")
     print(f"{'설정':26s} {'완주':>5} {'거리':>7} {'급코너RMS':>9} {'평균|n|':>8} "
-          f"{'사용률':>6} {'실효이득':>7} {'포화':>6}")
+          f"{'급코너α':>8} {'사용률':>6} {'실효이득':>7} {'포화':>6}")
     print("-" * 88)
     rows = []
     for f, lbl, vt, isres in runs:
@@ -72,9 +72,12 @@ def main():
         g, sat, vc, ay = steer_gain(p, kf)
         util = 100 * ay / (MU * 9.81)
         print(f"{lbl:26s} {'O' if r['done'] else 'X':>5} {r['dist']:6.0f}m "
-              f"{r['corner_rms']:9.3f} {r['n_mean']:8.3f} {util:5.0f}% {g:7.2f} {sat:5.1f}%")
+              f"{r['corner_rms']:9.3f} {r['n_mean']:8.3f} {r['a_corner']:7.2f}° "
+              f"{util:5.0f}% {g:7.2f} {sat:5.1f}%")
+        # a_corner = 급코너 헤딩오차(yaw error) RMS [deg]
         rows.append(dict(label=lbl, v_target=vt, is_res=isres, done=int(r["done"]),
                          dist=r["dist"], corner=r["corner_rms"], mean=r["n_mean"],
+                         a_corner=r["a_corner"], a_max=r["a_max"],
                          chatter=r["chatter"], util=util, gain=g, sat=sat))
 
     ok = {r["v_target"]: {} for r in rows}
@@ -99,6 +102,8 @@ def main():
         distance_m   = np.array([r["dist"] for r in rows]),
         corner_rms   = np.array([r["corner"] for r in rows]),
         mean_n       = np.array([r["mean"] for r in rows]),
+        a_corner     = np.array([r["a_corner"] for r in rows]),
+        a_max        = np.array([r["a_max"] for r in rows]),
         chatter      = np.array([r["chatter"] for r in rows]),
         friction_util= np.array([r["util"] for r in rows]),
         steer_gain   = np.array([r["gain"] for r in rows]),
