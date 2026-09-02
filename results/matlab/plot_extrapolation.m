@@ -67,28 +67,33 @@ xlim([8 15.2]); ylim(Y2)
 xlabel('Speed  [m/s]'); ylabel('Density')
 title('(b)  v=14 runs outside the training range','FontSize',11,'FontWeight','normal')
 
-%% (c) 오차와 채터가 함께 줄었는가
+%% (c) 세 지표가 함께 줄었는가 - 횡오차 / 헤딩오차 / 조향 채터
+%     n 만 보고하면 "유리한 지표만 골랐다"는 반박을 받는다. alpha 는 v=10 에서
+%     오히려 나빠지는데(횡오차를 줄이려 차체를 더 돌리는 trade-off), 외삽
+%     조건인 v=14 에서는 세 지표가 모두 개선된다.
 subplot(1,3,3); hold on; box off
 set(gca,'FontSize',10,'TickDir','out','YGrid','on', ...
         'GridColor',[.85 .85 .85],'GridAlpha',1,'Layer','bottom')
-chat = 100*(1 - speed.chat_res(:)./speed.chat_nom(:));
-w = 0.34; x = (1:numel(vt))';
-b1 = bar(x-w/2, speed.improve(:), w, 'FaceColor', RES, 'EdgeColor','none');
-b2 = bar(x+w/2, chat,             w, 'FaceColor', NOM, 'EdgeColor','none');
-plot([0.4 numel(vt)+0.6], [0 0], '-', 'Color', [0.3 0.3 0.3], 'LineWidth', 0.8);
-for k = 1:numel(vt)
-    text(x(k)-w/2, speed.improve(k)+5, sprintf('%.0f', speed.improve(k)), ...
-         'HorizontalAlignment','center','FontSize',9,'Color',RES);
-end
-% 마지막 막대 = 외삽 조건
-xl = get(gca,'XLim');
-text(numel(vt), 92, 'extrapolation', 'HorizontalAlignment','center', ...
+% 3번째 색 = Okabe-Ito bluish green. 파랑/주황과 함께 적록색약에서도 구분된다
+% (기존 초록/빨강 조합이 D형에서 안 구분돼 저장소 전체가 파랑/주황으로 바뀐 이력).
+HEAD = [0.00 0.62 0.45];
+red_n = speed.improve(:);
+red_a = speed.a_improve(:);
+red_c = 100*(1 - speed.chat_res(:)./speed.chat_nom(:));
+w = 0.26; x = (1:numel(vt))';
+b1 = bar(x-w,   red_n, w, 'FaceColor', RES,  'EdgeColor','none');
+b2 = bar(x,     red_a, w, 'FaceColor', HEAD, 'EdgeColor','none');
+b3 = bar(x+w,   red_c, w, 'FaceColor', NOM,  'EdgeColor','none');
+plot([0.4 numel(vt)+0.6], [0 0], '-', 'Color', [0.3 0.3 0.3], 'LineWidth', 0.9);
+% 마지막(외삽) 조건 강조
+plot([numel(vt)-0.5 numel(vt)-0.5], [-300 100], ':', 'Color', GREY, 'LineWidth', 1.4);
+text(numel(vt), 88, 'extrapolation', 'HorizontalAlignment','center', ...
      'FontSize',9,'Color',GREY);
-legend([b1 b2], {'Corner error reduction','Steering chatter reduction'}, ...
+legend([b1 b2 b3], {'Lateral error  n','Heading error  \alpha','Steering chatter'}, ...
        'Location','southwest', 'Box','off', 'FontSize', 9);
 set(gca,'XTick',1:numel(vt),'XTickLabel', ...
         arrayfun(@(v) sprintf('%.1f',v), vt, 'UniformOutput', false))
-xlim([0.4 numel(vt)+0.6]); ylim([-100 100])
+% v=10 채터는 -265% (잔차가 채터를 4배 늘린다). 잘리지 않게 축을 -300 까지 둔다.
+xlim([0.4 numel(vt)+0.6]); ylim([-300 100])
 xlabel('Target speed  [m/s]'); ylabel('Reduction vs nominal  [%]')
-title('(c)  Error and chatter both drop','FontSize',11,'FontWeight','normal')
-
+title('(c)  All three drop under extrapolation','FontSize',11,'FontWeight','normal')

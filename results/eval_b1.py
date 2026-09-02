@@ -38,7 +38,7 @@ def evaluate(path, kf):
     a = np.load(path)
     w = np.where(np.diff(a[:, 0]) < -100)[0]      # 랩 경계
     a = a[:w[0] + 1] if len(w) else a
-    s, n, v, delta = a[:, 0], a[:, 1], a[:, 3], a[:, 5]
+    s, n, alpha, v, delta = a[:, 0], a[:, 1], a[:, 2], a[:, 3], a[:, 5]
     corner = np.abs(kf(s)) >= KAPPA_CORNER
     return dict(
         name       = os.path.basename(path),
@@ -50,6 +50,11 @@ def evaluate(path, kf):
         n_rms      = np.sqrt((n ** 2).mean()),
         n_max      = np.abs(n).max(),
         corner_rms = np.sqrt((n[corner] ** 2).mean()) if corner.any() else np.nan,
+        # 헤딩오차 alpha (= yaw error, 경로 접선 대비 차체 방향). 전부 deg.
+        a_mean     = np.rad2deg(np.abs(alpha).mean()),
+        a_max      = np.rad2deg(np.abs(alpha).max()),
+        a_corner   = (np.rad2deg(np.sqrt((alpha[corner] ** 2).mean()))
+                      if corner.any() else np.nan),
         chatter    = np.sqrt(np.mean((np.diff(delta) / DT) ** 2)),
     )
 

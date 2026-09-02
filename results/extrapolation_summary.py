@@ -18,8 +18,14 @@
       목표 14 m/s. alat_max=5.0 이 최급코너 속도를 13.7 m/s 로 묶으므로
       목표를 16/18 로 올려도 코너 속도는 같다 — 직선만 빨라진다.
 
-결과: 주행 상태의 80~92% 가 학습 분포 밖인 조건에서 급코너 오차 43.4% 감소,
-      조향 채터 38% 감소, 양쪽 완주.
+결과: 주행 상태의 80~92% 가 학습 분포 밖인 조건에서 급코너 횡오차 43.4% 감소,
+      헤딩오차 48.9% 감소, 조향 채터 38.4% 감소, 양쪽 완주.
+
+헤딩오차 alpha (= yaw error, 경로 접선 대비 차체 방향)를 함께 본다. 잔차는 횡오차를
+줄이려고 차체를 더 적극적으로 돌리므로 두 지표가 항상 같이 좋아지지는 않는다 —
+v=10 에서는 급코너 alpha 가 7% 나빠진다(평균 0.57 -> 0.81 deg). 절대값은 3 deg 이하로
+작지만, 횡오차만 보고하면 "유리한 지표만 골랐다"는 반박을 받으므로 같이 싣는다.
+외삽 조건(v=14)에서는 두 지표가 동시에 개선된다.
 
 외삽 지표는 **방향이 있는 것**을 쓴다. 학습 데이터의 속도 최대값(12.234 m/s)을
 넘는 샘플 비율과, 도달 최고속도의 초과율이다.
@@ -73,20 +79,24 @@ def main():
     print(f"학습 데이터: {len(tr)} 샘플, 속도 최대 = {v_hi:.3f} m/s "
           f"(p99 {np.percentile(tr[:, 2], 99):.2f})\n")
 
-    print("A. 속도 스윕 — 성능")
-    print(f"{'목표v':>6}{'실제v':>7}{'완주':>7}{'nom':>8}{'res':>8}{'개선':>8}"
-          f"{'채터nom':>9}{'채터res':>9}")
+    print("A. 속도 스윕 — 성능 (n = 급코너 횡오차 RMS[m], a = 급코너 헤딩오차 RMS[deg])")
+    print(f"{'목표v':>6}{'실제v':>7}{'완주':>6}{'n_nom':>7}{'n_res':>7}{'n개선':>7}"
+          f"{'a_nom':>7}{'a_res':>7}{'a개선':>7}{'채터nom':>9}{'채터res':>9}")
     A = {k: [] for k in
-         "v_target v_actual nom res improve chat_nom chat_res".split()}
+         ("v_target v_actual nom res improve "
+          "a_nom a_res a_improve chat_nom chat_res").split()}
     for vt, tag in SPEEDS:
         n = evaluate(os.path.join(B1, f"{tag}_nom.npy"), kf)
         r = evaluate(os.path.join(B1, f"{tag}_res.npy"), kf)
         imp = 100 * (n["corner_rms"] - r["corner_rms"]) / n["corner_rms"]
+        aimp = 100 * (n["a_corner"] - r["a_corner"]) / n["a_corner"]
         done = ("O" if n["done"] else "X") + "/" + ("O" if r["done"] else "X")
-        print(f"{vt:6.1f}{r['v_mean']:7.2f}{done:>7}{n['corner_rms']:8.3f}"
-              f"{r['corner_rms']:8.3f}{imp:7.1f}%{n['chatter']:9.4f}{r['chatter']:9.4f}")
-        for k, val in zip(A, [vt, r["v_mean"], n["corner_rms"], r["corner_rms"],
-                              imp, n["chatter"], r["chatter"]]):
+        print(f"{vt:6.1f}{r['v_mean']:7.2f}{done:>6}{n['corner_rms']:7.3f}"
+              f"{r['corner_rms']:7.3f}{imp:6.1f}%{n['a_corner']:7.2f}{r['a_corner']:7.2f}"
+              f"{aimp:6.1f}%{n['chatter']:9.4f}{r['chatter']:9.4f}")
+        for k, val in zip(A, [vt, r["v_mean"], n["corner_rms"], r["corner_rms"], imp,
+                              n["a_corner"], r["a_corner"], aimp,
+                              n["chatter"], r["chatter"]]):
             A[k].append(val)
 
     print("\nB. 학습 속도 상한(최대 %.2f m/s)을 얼마나 넘었나" % v_hi)
@@ -124,8 +134,12 @@ def main():
     i = A["v_target"].index(14.0)
     print(f"\n핵심: 최고속도가 학습 상한을 {100 * (B['v_max'][-1] / v_hi - 1):.0f}% 초과하고 "
           f"주행의 {B['frac_v'][-1]:.0f}%(nominal {B['frac_v'][-2]:.0f}%)가 상한 밖인 "
-          f"조건에서\n      급코너 오차 {A['improve'][i]:.1f}% 감소, "
+          f"조건에서\n      횡오차 {A['improve'][i]:.1f}%, 헤딩오차 {A['a_improve'][i]:.1f}%, "
           f"채터 {100 * (1 - A['chat_res'][i] / A['chat_nom'][i]):.0f}% 감소, 양쪽 완주.")
+    j = A["v_target"].index(10.0)
+    print(f"      단, v=10 에서는 헤딩오차가 {-A['a_improve'][j]:.0f}% 나빠진다 "
+          f"({A['a_nom'][j]:.2f} -> {A['a_res'][j]:.2f} deg) — 횡오차를 줄이려고 "
+          f"차체를 더 돌리는 trade-off.")
     print("      거리 지표는 방향을 구분하지 못하므로(v=10 도 96%) 외삽 근거로 쓰지 않는다.")
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
