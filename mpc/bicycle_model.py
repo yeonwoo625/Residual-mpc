@@ -7,6 +7,7 @@ state x = [s, n, alpha, v, D, delta]    (6)
 input u = [derD, derDelta]               (2)
 """
 import math
+import os
 import types
 import numpy as np
 from casadi import MX, vertcat, cos, sin, tan, tanh, Function
@@ -111,8 +112,14 @@ def bicycle_model(dt, coeff, knots, degree=3):
     model.throttle_max =  1.0
     model.delta_min = -30 * DEG2RAD
     model.delta_max =  30 * DEG2RAD
-    model.ddelta_min = -1.0
-    model.ddelta_max =  1.0
+    # 조향 각속도 제한 [rad/s] (앞바퀴 기준). 기본 1.0 rad/s = 57.3 °/s 는
+    # 실차 조향 액추에이터 대역폭보다 크므로, DDELTA_MAX 로 조여서 검증할 수 있다.
+    #   DDELTA_MAX=0.2  -> 11.5 °/s   DDELTA_MAX=0.1 -> 5.7 °/s
+    _dd = float(os.environ.get("DDELTA_MAX", "1.0"))
+    model.ddelta_min = -_dd
+    model.ddelta_max =  _dd
+    if _dd != 1.0:
+        print(f"[model] ddelta_max = {_dd} rad/s ({_dd*180/math.pi:.1f} deg/s)", flush=True)
     model.dthrottle_min = -1.0
     model.dthrottle_max =  1.0
 

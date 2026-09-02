@@ -61,6 +61,7 @@ cd /home/vilab/CarMaker/mpc_docker && ./scripts/2_relay.sh    # "relay connected
 | `MASS`, `COG_X` | 조건화(8-dim) 모델 컨텍스트 |
 | `RESIDUAL_DBG_LOG=path` | per-step 12열 로그 저장(발산 진단용) |
 | `RESIDUAL_SCALE` | 잔차 출력 배율 (기본 1.0). 기존 실험은 0.3 |
+| `DDELTA_MAX` | 조향 각속도 제약 [rad/s, 앞바퀴]. 기본 1.0(=57.3°/s)은 IPGDriver 최대(2.47°/s)의 23배로 비현실적.<br>근거 있는 값: **0.1**(5.7°/s, 기준 운전자 최대의 2.3배). 측정: `scripts/record_steer.py` |
 | `RESIDUAL_CLAMP` | 잔차 포화 한계. 값 1개 = 기본값 배율, 4개 = `[Δs,Δn,Δα,Δv]` 직접 지정.<br>기본 `[0.2, 0.1, 0.05, 0.4]` (0.1 s 스텝당). 예: `RESIDUAL_CLAMP=2` |
 | `Q_N`, `Q_ALPHA`, `Q_V`, `Q_DELTA` | 비용 가중치 (mpc/cost_weights.py, 기본값=기존 값) |
 | `R_D`, `R_DELTA` | 스로틀·조향 rate 벌점 (기본 2e-4). nominal·residual 양쪽에 적용 |
