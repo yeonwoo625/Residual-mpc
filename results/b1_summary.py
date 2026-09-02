@@ -7,7 +7,8 @@ B1 실험 종합 — nominal 가중치 튜닝 vs residual MPC.
 2026-08-31 에 수행한 실험 전체를 정리한다.
 
 세 갈래:
-  A. 속도 스윕   — Q_n=1e-4 고정, 10 / 11.5 / 12 m/s 에서 nominal vs residual
+  A. 속도 스윕   — Q_n=1e-4 고정, 10 / 11.5 / 12 / 14 m/s 에서 nominal vs residual
+                   (14 은 학습 상한 12.03 을 넘는 외삽 조건. results/extrapolation_summary.py 참조)
   B. 가중치 스윕 — v=10 고정, Q_n 을 1e-4 ~ 1e-2 (100배) 로 올리며 nominal 단독
   C. 적재 검증   — B 의 최적 gain(1e-2) 하나로 32 / 48 / 56 t
   D. 상호작용    — 높은 gain 에서 잔차 세기(RESIDUAL_SCALE)를 바꿔가며
@@ -40,7 +41,7 @@ def main():
     M = {}
 
     # ---------- A. 속도 스윕 (Q_n = 1e-4) ----------
-    speeds = [(10.0, "v10"), (11.5, "v115"), (12.0, "v12")]
+    speeds = [(10.0, "v10"), (11.5, "v115"), (12.0, "v12"), (14.0, "v14")]
     print("A. 속도 스윕  (Q_n=1e-4 고정, 48t) — nominal vs residual")
     print(f"{'목표v':>6} {'실제v':>7} {'nom':>7} {'res':>7} {'개선':>7} "
           f"{'채터nom':>8} {'채터res':>8}")
