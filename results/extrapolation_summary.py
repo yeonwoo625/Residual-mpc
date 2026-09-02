@@ -79,24 +79,32 @@ def main():
     print(f"학습 데이터: {len(tr)} 샘플, 속도 최대 = {v_hi:.3f} m/s "
           f"(p99 {np.percentile(tr[:, 2], 99):.2f})\n")
 
-    print("A. 속도 스윕 — 성능 (n = 급코너 횡오차 RMS[m], a = 급코너 헤딩오차 RMS[deg])")
-    print(f"{'목표v':>6}{'실제v':>7}{'완주':>6}{'n_nom':>7}{'n_res':>7}{'n개선':>7}"
-          f"{'a_nom':>7}{'a_res':>7}{'a개선':>7}{'채터nom':>9}{'채터res':>9}")
+    print("A. 속도 스윕 — x / y / yaw 세 지표")
+    print("   x = 종방향 진행오차[m] (음수 = 목표속도 대비 뒤처짐)")
+    print("   y = 급코너 횡오차 RMS[m],  yaw = 급코너 헤딩오차 RMS[deg]")
+    print(f"{'목표v':>6}{'Hz_n':>6}{'Hz_r':>6}{'x_nom':>8}{'x_res':>8}"
+          f"{'y_nom':>7}{'y_res':>7}{'y개선':>7}"
+          f"{'yaw_n':>7}{'yaw_r':>7}{'yaw개선':>8}{'채터n':>8}{'채터r':>8}")
     A = {k: [] for k in
          ("v_target v_actual nom res improve "
-          "a_nom a_res a_improve chat_nom chat_res").split()}
+          "a_nom a_res a_improve chat_nom chat_res "
+          "x_nom x_res rate_nom rate_res lap_nom lap_res").split()}
     for vt, tag in SPEEDS:
-        n = evaluate(os.path.join(B1, f"{tag}_nom.npy"), kf)
-        r = evaluate(os.path.join(B1, f"{tag}_res.npy"), kf)
+        n = evaluate(os.path.join(B1, f"{tag}_nom.npy"), kf, v_target=vt)
+        r = evaluate(os.path.join(B1, f"{tag}_res.npy"), kf, v_target=vt)
         imp = 100 * (n["corner_rms"] - r["corner_rms"]) / n["corner_rms"]
         aimp = 100 * (n["a_corner"] - r["a_corner"]) / n["a_corner"]
-        done = ("O" if n["done"] else "X") + "/" + ("O" if r["done"] else "X")
-        print(f"{vt:6.1f}{r['v_mean']:7.2f}{done:>6}{n['corner_rms']:7.3f}"
-              f"{r['corner_rms']:7.3f}{imp:6.1f}%{n['a_corner']:7.2f}{r['a_corner']:7.2f}"
-              f"{aimp:6.1f}%{n['chatter']:9.4f}{r['chatter']:9.4f}")
+        print(f"{vt:6.1f}{n['rate_hz']:6.1f}{r['rate_hz']:6.1f}"
+              f"{n['x_final']:8.0f}{r['x_final']:8.0f}"
+              f"{n['corner_rms']:7.3f}{r['corner_rms']:7.3f}{imp:6.1f}%"
+              f"{n['a_corner']:7.2f}{r['a_corner']:7.2f}{aimp:7.1f}%"
+              f"{n['chatter']:8.4f}{r['chatter']:8.4f}")
         for k, val in zip(A, [vt, r["v_mean"], n["corner_rms"], r["corner_rms"], imp,
                               n["a_corner"], r["a_corner"], aimp,
-                              n["chatter"], r["chatter"]]):
+                              n["chatter"], r["chatter"],
+                              n["x_final"], r["x_final"],
+                              n["rate_hz"], r["rate_hz"],
+                              n["lap_time"], r["lap_time"]]):
             A[k].append(val)
 
     print("\nB. 학습 속도 상한(최대 %.2f m/s)을 얼마나 넘었나" % v_hi)
@@ -141,6 +149,11 @@ def main():
           f"({A['a_nom'][j]:.2f} -> {A['a_res'][j]:.2f} deg) — 횡오차를 줄이려고 "
           f"차체를 더 돌리는 trade-off.")
     print("      거리 지표는 방향을 구분하지 못하므로(v=10 도 96%) 외삽 근거로 쓰지 않는다.")
+    print(f"      대가: v=14 에서 residual 은 {-A['x_res'][i]:.0f} m 뒤처지고 랩타임이 "
+          f"{A['lap_res'][i] - A['lap_nom'][i]:.0f} s 길다 "
+          f"({A['lap_nom'][i]:.0f} -> {A['lap_res'][i]:.0f} s).")
+    print(f"      제어 주기: v=14 는 양쪽 {A['rate_nom'][i]:.0f}/{A['rate_res'][i]:.0f} Hz 로 같다. "
+          f"v<=12 의 잔차 주행은 {A['rate_res'][0]:.1f} Hz 로 돌았다(solve 109 ms).")
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     # 속도 분포 (그림 (c) 용) — 공통 격자에서의 히스토그램

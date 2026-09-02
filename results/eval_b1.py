@@ -34,12 +34,38 @@ def _kappa_fn():
     return lambda s: sp(np.clip(s, lo, hi))
 
 
-def evaluate(path, kf):
+def estimate_dt(s, v, v_min=3.0):
+    """기록 행 간격 [s] 을 데이터에서 역산한다.
+
+    궤적 파일에는 시간축이 없어 오랫동안 DT=0.1 을 가정했으나, 잔차 주행은
+    solve 가 109 ms 라 제어 주기를 못 지키고 실제로는 ~6.4 Hz(0.155 s)로 돌았다
+    (2026-09-02 확인, results/solvetime/ 참조). 한 스텝 진행거리 ds 와 속도 v 로
+    dt = ds/v 를 구해 중앙값을 쓴다. 저속 구간은 ds/v 가 불안정해 제외한다.
+    """
+    ds = np.diff(s)
+    vm = 0.5 * (v[1:] + v[:-1])
+    m = vm > v_min
+    return float(np.median(ds[m] / vm[m])) if m.sum() > 20 else DT
+
+
+def evaluate(path, kf, v_target=None):
     a = np.load(path)
     w = np.where(np.diff(a[:, 0]) < -100)[0]      # 랩 경계
     a = a[:w[0] + 1] if len(w) else a
     s, n, alpha, v, delta = a[:, 0], a[:, 1], a[:, 2], a[:, 3], a[:, 5]
     corner = np.abs(kf(s)) >= KAPPA_CORNER
+    dt = estimate_dt(s, v)
+
+    # 종방향(x) 오차 = 진행거리 부족분. 목표속도로 갔을 때 대비 얼마나 뒤처졌나.
+    # 정지 출발 가속 구간은 어떤 제어기든 뒤처지므로, 목표속도의 95% 에 처음
+    # 도달한 시점을 기준으로 잡는다. 음수 = 뒤처짐.
+    if v_target is None:
+        x_mean = x_rms = x_final = np.nan
+    else:
+        i = int(np.argmax(v >= 0.95 * v_target))
+        t = np.arange(len(s) - i) * dt
+        xe = (s[i:] - s[i]) - v_target * t
+        x_mean, x_rms, x_final = xe.mean(), np.sqrt((xe ** 2).mean()), xe[-1]
     return dict(
         name       = os.path.basename(path),
         steps      = len(a),
@@ -55,7 +81,16 @@ def evaluate(path, kf):
         a_max      = np.rad2deg(np.abs(alpha).max()),
         a_corner   = (np.rad2deg(np.sqrt((alpha[corner] ** 2).mean()))
                       if corner.any() else np.nan),
-        chatter    = np.sqrt(np.mean((np.diff(delta) / DT) ** 2)),
+        x_mean     = x_mean,
+        x_rms      = x_rms,
+        x_final    = x_final,
+        lap_time   = (len(a) - 1) * dt,
+        # 제어 주기를 데이터에서 역산해 쓴다. DT=0.1 을 고정하면 6.4 Hz 로 돈
+        # 잔차 주행의 채터가 1.55배 과대평가된다.
+        dt_est     = dt,
+        rate_hz    = 1.0 / dt,
+        chatter    = np.sqrt(np.mean((np.diff(delta) / dt) ** 2)),
+        chatter_dt01 = np.sqrt(np.mean((np.diff(delta) / DT) ** 2)),   # 과거 값(참고)
     )
 
 

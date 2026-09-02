@@ -28,6 +28,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(ROOT, "mpc"))
 from reference_utils import compute_path_spline               # noqa: E402
+from eval_b1 import estimate_dt                               # noqa: E402
 
 HW    = os.path.join(HERE, "highway")
 OUT   = os.path.join(HERE, "matlab", "fig_highway.mat")
@@ -54,12 +55,15 @@ def main():
     print(f"  차선 폭 {LANE_W} m, 트럭 폭 {TRUCK_W} m  ->  좌우 여유 {MARGIN:.2f} m\n")
 
     print(f"{'':10s} {'완주':>5} {'거리':>8} {'평균|n|':>8} {'RMS|n|':>8} "
-          f"{'최대|n|':>8} {'여유대비':>8} {'RMS α':>8} {'최대 α':>8} {'채터':>8}")
+          f"{'최대|n|':>8} {'여유대비':>8} {'RMS α':>8} {'최대 α':>8} {'채터':>8} {'제어율':>8}")
     print("-" * 90)
     rows = {}
     for f, l in [("hw_nom.npy", "nominal"), ("hw_res.npy", "residual")]:
         a = lap1(os.path.join(HW, f))
-        s, n, al, de = a[:, 0], a[:, 1], a[:, 2], a[:, 5]
+        s, n, al, v_, de = a[:, 0], a[:, 1], a[:, 2], a[:, 3], a[:, 5]
+        # 제어 주기를 데이터에서 역산한다. 잔차 주행은 solve 109 ms 라 10 Hz 를
+        # 못 지키고 ~6.9 Hz 로 돌았다 -> DT=0.1 고정 시 채터가 과대평가된다.
+        dt = estimate_dt(s, v_)
         d = s.max() - s.min()
         done = d > 850
         # alpha = 헤딩오차(yaw error, 경로 접선 대비 차체 방향). deg 로 보고한다.
@@ -68,10 +72,11 @@ def main():
                  a_mean=np.rad2deg(np.abs(al).mean()),
                  a_rms=np.rad2deg(np.sqrt((al ** 2).mean())),
                  a_max=np.rad2deg(np.abs(al).max()),
-                 chatter=np.sqrt(np.mean((np.diff(de) / 0.1) ** 2)))
+                 dt=dt, rate_hz=1.0 / dt,
+                 chatter=np.sqrt(np.mean((np.diff(de) / dt) ** 2)))
         print(f"{l:10s} {'O' if done else 'X':>5} {d:7.0f}m {r['mean']:8.3f} "
               f"{r['rms']:8.3f} {r['max']:8.3f} {100*r['max']/MARGIN:7.0f}% "
-              f"{r['a_rms']:7.2f}° {r['a_max']:7.2f}° {r['chatter']:8.4f}")
+              f"{r['a_rms']:7.2f}° {r['a_max']:7.2f}° {r['chatter']:8.4f} {r['rate_hz']:6.1f}Hz")
         rows[l] = r
 
     n_, r_ = rows["nominal"], rows["residual"]
@@ -95,6 +100,7 @@ def main():
         rms_a=np.array([n_["a_rms"], r_["a_rms"]]),
         max_a=np.array([n_["a_max"], r_["a_max"]]),
         chatter=np.array([n_["chatter"], r_["chatter"]]),
+        rate_hz=np.array([n_["rate_hz"], r_["rate_hz"]]),
     ))
     print(f"\n저장: {OUT}")
 
