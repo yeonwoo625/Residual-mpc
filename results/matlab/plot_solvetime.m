@@ -1,76 +1,80 @@
-% plot_solvetime.m — MPC 연산시간: nominal vs residual, 그리고 100배 낭비의 제거
+% MPC 연산시간 - nominal vs residual, 그리고 100배 낭비의 제거
 %
-% (a) 주행 중 계측: residual 이 10 Hz 예산을 넘긴다
-% (b) 원인: SQP 반복 횟수에 정비례 — 계산이 무거운 게 아니라 100번 돌고 있었다
-% (c) 10회면 100회와 같은 해 -> 90회는 순수 낭비
+% l4acados 의 solve() 는 nlp_solver_max_iter 만큼 preparation/feedback 을 무조건
+% 반복한다(수렴 시 조기 종료 분기가 rti_log_residuals 에만 있다). acados 기본값
+% 100 이 그대로 적용되어 제어 1스텝마다 SQP 를 100회 돌고 있었다 - nominal 은
+% acados 자체 SQP_RTI 로 1회만 돈다. 10회면 100회와 조향 명령이 0.002도 이내로
+% 같으므로 나머지 90회는 수렴한 문제를 다시 푸는 순수 낭비였다.
+%   주행 중 계측: 109.3 ms -> 24.2 ms (10 Hz 예산의 24%)
 %
-% 데이터: fig_solvetime.mat  (results/solvetime_summary.py 로 생성)
+% 데이터: fig_solvetime.mat  (results/solvetime_summary.py 가 생성)
+% 실행:   results/matlab/ 폴더 안에서 `plot_solvetime`
+% 요구:   base MATLAB 만 (툴박스 불필요). R2013a 이상.
 
-clear; close all;
-load('fig_solvetime.mat');
+clear; close all
+load('fig_solvetime.mat')
 
-BLUE = [0.12 0.47 0.71];
-ORNG = [0.90 0.49 0.13];
+NOM  = [0.12 0.47 0.71];
+RES  = [0.90 0.49 0.13];
 GREY = [0.55 0.55 0.55];
 
-figure('Color','w','Position',[100 100 1240 360]);
+figure('Color','w','Position',[80 80 1280 380])
 
-% ---------------------------------------------------------------- (a) 주행 중 계측
-% 막대 = 중앙값, 수염 = p95. 3개 구성 전부 실제 주행 로그.
-subplot(1,3,1); hold on; box on;
+%% (a) 주행 중 계측 - 막대 중앙값, 수염 p95
+subplot(1,3,1); hold on; box off
+set(gca,'FontSize',10,'TickDir','out','YGrid','on', ...
+        'GridColor',[.85 .85 .85],'GridAlpha',1,'Layer','bottom')
 med = inloop_stats(:,1);  p95 = inloop_stats(:,3);
-cols = [BLUE; ORNG; ORNG];
+cols = [NOM; RES; RES];
 for k = 1:3
-    bar(k, med(k), 0.55, 'FaceColor', cols(k,:), 'EdgeColor','none');
+    bar(k, med(k), 0.5, 'FaceColor', cols(k,:), 'EdgeColor','none');
     plot([k k], [med(k) p95(k)], '-', 'Color', [0.25 0.25 0.25], 'LineWidth', 1.1);
-    plot(k, p95(k), '_', 'Color', [0.25 0.25 0.25], 'MarkerSize', 9, 'LineWidth', 1.1);
-    text(k, p95(k)*1.18, sprintf('%.1f', med(k)), ...
-         'HorizontalAlignment','center', 'FontSize', 10, 'FontWeight','bold');
+    plot(k, p95(k), '_', 'Color', [0.25 0.25 0.25], 'MarkerSize', 10, 'LineWidth', 1.1);
+    text(k, p95(k)*1.20, sprintf('%.1f', med(k)), ...
+         'HorizontalAlignment','center','FontSize',10,'FontWeight','bold');
 end
-plot([0.4 3.6], [budget_ms budget_ms], '--', 'Color', GREY, 'LineWidth', 1.4);
-text(3.55, budget_ms*1.30, '10 Hz 예산 100 ms', ...
+plot([0.4 3.6], [budget_ms budget_ms], '--', 'Color', GREY, 'LineWidth', 1.6);
+text(3.55, budget_ms*1.35, sprintf('10 Hz budget  %d ms', budget_ms), ...
      'Color', GREY, 'FontSize', 9, 'HorizontalAlignment','right');
-set(gca,'XTick',1:3,'XTickLabel',{'nominal','residual','residual'}, ...
-        'YScale','log','FontSize',10,'YGrid','on');
-text(2, 0.55, '수정 전', 'HorizontalAlignment','center','FontSize',9,'Color',ORNG);
-text(3, 0.55, '수정 후', 'HorizontalAlignment','center','FontSize',9,'Color',ORNG);
-xlim([0.4 3.6]); ylim([0.4 400]);
-ylabel('solve 시간 (ms) — 막대 중앙값, 수염 p95');
-title('(a) 주행 중 계측', 'FontSize',11);
+text(2, 0.52, 'before', 'HorizontalAlignment','center','FontSize',9,'Color',RES);
+text(3, 0.52, 'after',  'HorizontalAlignment','center','FontSize',9,'Color',RES);
+set(gca,'XTick',1:3,'XTickLabel',{'Nominal','Residual','Residual'},'YScale','log')
+xlim([0.4 3.6]); ylim([0.4 400])
+ylabel('Solve time  [ms]   (bar median, whisker p95)')
+title('(a)  Measured in closed loop','FontSize',11,'FontWeight','normal')
 
-% ------------------------------------------------- (b) 반복 횟수 대 solve 시간
-subplot(1,3,2); hold on; box on;
+%% (b) 시간은 SQP 반복 횟수에 정비례한다
+subplot(1,3,2); hold on; box off
+set(gca,'FontSize',10,'TickDir','out','XGrid','on','YGrid','on', ...
+        'GridColor',[.85 .85 .85],'GridAlpha',1,'Layer','bottom')
 it = sweep(:,1); ms = sweep(:,2);
-plot([1 100], [budget_ms budget_ms], '--', 'Color', GREY, 'LineWidth', 1.4);
-plot([1 100], [nominal_offline_ms nominal_offline_ms], ':', 'Color', BLUE, 'LineWidth', 1.6);
-plot(it, ms, '-o', 'Color', ORNG, 'LineWidth', 1.8, 'MarkerSize', 6, ...
-     'MarkerFaceColor', ORNG);
-plot(10,  ms(it==10),  'o', 'Color','k', 'MarkerSize', 11, 'LineWidth', 1.6);
-plot(100, ms(it==100), 'o', 'Color','k', 'MarkerSize', 11, 'LineWidth', 1.6);
-text(10,  ms(it==10)*0.45, '수정 후', 'FontSize',9, 'HorizontalAlignment','center');
-text(100, ms(it==100)*1.9, '수정 전', 'FontSize',9, 'HorizontalAlignment','right');
-text(1.15, nominal_offline_ms*0.62, 'nominal', 'Color', BLUE, 'FontSize',9);
-set(gca,'XScale','log','YScale','log','FontSize',10,'XGrid','on','YGrid','on');
-xlim([0.85 130]); ylim([0.3 400]);
-xlabel('제어 1스텝당 SQP 반복 횟수');
-ylabel('solve 시간 (ms)');
-title('(b) 시간은 반복 횟수에 정비례', 'FontSize',11);
+plot([1 100], [budget_ms budget_ms], '--', 'Color', GREY, 'LineWidth', 1.6);
+plot([1 100], [nominal_offline_ms nominal_offline_ms], ':', 'Color', NOM, 'LineWidth', 1.8);
+plot(it, ms, '-o', 'Color', RES, 'LineWidth', 2, 'MarkerSize', 6, 'MarkerFaceColor', RES);
+plot(10,  ms(it==10),  'o', 'Color','k', 'MarkerSize', 12, 'LineWidth', 1.6);
+plot(100, ms(it==100), 'o', 'Color','k', 'MarkerSize', 12, 'LineWidth', 1.6);
+text(10,  ms(it==10)*0.42,  'after',  'FontSize',9,'HorizontalAlignment','center');
+text(100, ms(it==100)*2.1,  'before', 'FontSize',9,'HorizontalAlignment','right');
+text(1.15, nominal_offline_ms*0.58, 'nominal', 'Color', NOM, 'FontSize', 9);
+text(1.15, budget_ms*1.35, sprintf('10 Hz budget  %d ms', budget_ms), ...
+     'Color', GREY, 'FontSize', 9);
+set(gca,'XScale','log','YScale','log')
+xlim([0.85 130]); ylim([0.3 400])
+xlabel('SQP iterations per control step'); ylabel('Solve time  [ms]')
+title('(b)  Time scales with iteration count','FontSize',11,'FontWeight','normal')
 
-% --------------------------------------------- (c) 해는 10회에서 이미 수렴
-subplot(1,3,3); hold on; box on;
-dev = sweep(:,3);                          % max |d delta| vs 100회 해
-dev(dev <= 0) = 1e-4;                      % log 축 표시용 하한
-plot(it, dev, '-s', 'Color', ORNG, 'LineWidth', 1.8, 'MarkerSize', 6, ...
-     'MarkerFaceColor', ORNG);
-plot(10, dev(it==10), 'o', 'Color','k', 'MarkerSize', 11, 'LineWidth', 1.6);
-text(10, dev(it==10)*7, sprintf('%.4f\\circ', sweep(it==10,3)), ...
-     'FontSize',9, 'HorizontalAlignment','center');
-set(gca,'XScale','log','YScale','log','FontSize',10,'XGrid','on','YGrid','on');
-xlim([0.85 130]); ylim([5e-5 40]);
-xlabel('제어 1스텝당 SQP 반복 횟수');
-ylabel('100회 해 대비 조향 차이 (deg)');
-title('(c) 10회에서 이미 수렴', 'FontSize',11);
-
-set(gcf,'PaperPositionMode','auto');
-print(gcf, '-dpng', '-r200', 'fig_solvetime.png');
-fprintf('saved fig_solvetime.png\n');
+%% (c) 해는 10회에서 이미 수렴 - 나머지 90회는 낭비
+subplot(1,3,3); hold on; box off
+set(gca,'FontSize',10,'TickDir','out','XGrid','on','YGrid','on', ...
+        'GridColor',[.85 .85 .85],'GridAlpha',1,'Layer','bottom')
+dev = sweep(:,3);
+dev(dev <= 0) = 1e-4;                       % log 축 표시용 하한
+plot(it, dev, '-s', 'Color', RES, 'LineWidth', 2, 'MarkerSize', 6, 'MarkerFaceColor', RES);
+plot(10, dev(it==10), 'o', 'Color','k', 'MarkerSize', 12, 'LineWidth', 1.6);
+text(10, dev(it==10)*8, sprintf('%.4f\\circ', sweep(it==10,3)), ...
+     'FontSize',9,'HorizontalAlignment','center');
+set(gca,'XScale','log','YScale','log')
+xlim([0.85 130]); ylim([5e-5 40])
+xlabel('SQP iterations per control step')
+ylabel('Steering difference vs 100 iters  [deg]')
+title('(c)  Converged already at 10','FontSize',11,'FontWeight','normal')

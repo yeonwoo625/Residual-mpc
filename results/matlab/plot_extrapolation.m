@@ -92,6 +92,3 @@ xlim([0.4 numel(vt)+0.6]); ylim([-100 100])
 xlabel('Target speed  [m/s]'); ylabel('Reduction vs nominal  [%]')
 title('(c)  Error and chatter both drop','FontSize',11,'FontWeight','normal')
 
-set(gcf,'PaperPositionMode','auto')
-print(gcf,'-dpng','-r200','fig_extrapolation.png')
-fprintf('saved fig_extrapolation.png\n')
