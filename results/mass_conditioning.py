@@ -23,8 +23,12 @@
      같지만 무게 정보는 없다. 이것이 진짜 무게 모델만큼 잘하면, 폐루프에서
      관측된 차이는 무게 정보가 아니라 입력 차원/초기값/학습 노이즈 탓이다.
 
-**한계를 먼저 밝힌다.** 폐루프 주행은 32 / 48 / 56 t 만 있고 **40 t 는 없다**
-(주행 미실시). 40 t 는 예측 오차만 보고한다. 또 48 t 는 seed0 하나뿐이다.
+**한계를 먼저 밝힌다.** 폐루프에서 **40 t 는 주행 조건이 다르다.**
+32 / 48 / 56 t 는 `TARGET_SPEED=10`, 솔버 수정 전(SQP 100회 -> 실제 6.5 Hz)에
+시드 3개씩 돌았고, 40 t 는 `TARGET_SPEED=12`, 수정 후(10 Hz)에 **시드 0 하나만**
+돌았다(2026-09-03). 따라서 40 t 의 **절대값은 다른 적재와 비교할 수 없다** —
+속도가 1.9 m/s 빨라 오차가 약 2배다. 같은 조건에서 돌린 **40 t 내부의
+무게 O/X 쌍비교만** 유효하다.
 
 모델: mpc/residual_model_{cond,nomass}_s{0,1,2}.pt  (시드만 다르고 나머지 동일)
 데이터: /home/vilab/CarMaker/mpc_host/hockenheim_mass.npz (8,088 샘플, 8차원)
@@ -113,7 +117,10 @@ def main():
 
     # ---------- ② 폐루프 ----------
     kf = _kappa_fn()
-    CL_M = [32, 48, 56]                     # 40t 주행 없음
+    CL_M = [32, 40, 48, 56]
+    # 주행 조건 (40t 만 다르다 - 절대값 비교 불가, 쌍비교만 유효)
+    CL_NOTE = {32: "v=10, 6.5Hz, 3 seeds", 40: "v=12, 10Hz, 1 seed",
+               48: "v=10, 6.5Hz, 3 seeds", 56: "v=10, 6.5Hz, 3 seeds"}
     # variant 0=nomass 1=cond 2=shufmass(48t 만 존재)
     C = np.full((len(CL_M), 3, len(SEEDS), 2), np.nan)
     for mi, m in enumerate(CL_M):
@@ -129,15 +136,19 @@ def main():
     print("\n" + "=" * 78)
     print("② 폐루프 추종 오차 (실주행) — 3시드 평균±표준편차")
     print("=" * 78)
-    print(f"{'적재':>6}{'지표':>15}{'무게 X':>17}{'무게 O':>17}{'섞은무게(플라시보)':>22}")
+    print(f"{'적재':>6}{'지표':>15}{'무게 X':>17}{'무게 O':>17}"
+          f"{'섞은무게':>17}{'이득':>8}  주행조건")
     for mi, m in enumerate(CL_M):
         for ci, lbl in enumerate(("급코너 |n| RMS", "급코너 α RMS")):
-            cells = []
+            cells, means = [], []
             for vi in range(3):
                 a = C[mi, vi, :, ci]; a = a[~np.isnan(a)]
+                means.append(a.mean() if len(a) else np.nan)
                 cells.append(f"{a.mean():8.3f}±{a.std():.3f}" if len(a) else f"{'-':>14}")
+            g = 100 * (means[0] - means[1]) / means[0]
+            note = CL_NOTE[m] if ci == 0 else ""
             print(f"{(str(m)+'t') if ci == 0 else '':>6}{lbl:>15}"
-                  f"{cells[0]:>17}{cells[1]:>17}{cells[2]:>22}")
+                  f"{cells[0]:>17}{cells[1]:>17}{cells[2]:>17}{g:7.1f}%  {note}")
 
     print("\n③ 플라시보 판정 (48 t)")
     a = C[CL_M.index(48)]
@@ -147,8 +158,10 @@ def main():
         print(f"  {lbl}: 무게없음 {nm:.3f} -> 진짜무게 {cd:.3f}, 섞은무게 {sh:.3f}")
         print(f"      섞은 무게가 '조건화 이득'의 {frac:.0f}% 를 재현한다.")
 
-    print("\n한계: 40 t 는 폐루프 주행이 없어 예측 오차만 있다.")
-    print("      플라시보는 48 t 만 학습돼 있다.")
+    print("\n한계")
+    print("  · 40 t 폐루프는 v=12 / 10 Hz / 시드1개로 조건이 다르다.")
+    print("    절대값은 다른 적재와 비교 불가. 40 t 내부 쌍비교만 유효하다.")
+    print("  · 플라시보는 48 t 만 학습·주행돼 있다.")
 
     savemat(OUT, dict(
         mass_pred   = np.array(MASSES),
@@ -159,6 +172,8 @@ def main():
         mass_cloop  = np.array(CL_M),
         cloop_var   = np.array(["without mass", "with mass", "shuffled mass"], dtype=object),
         cloop_metric= np.array(["corner n RMS [m]", "corner alpha RMS [deg]"], dtype=object),
+        cloop_note  = np.array([CL_NOTE[m] for m in CL_M], dtype=object),
+        cloop_same  = np.array([m != 40 for m in CL_M]),   # 절대값 비교 가능 여부
         cloop_err   = C,                    # (mass, variant, seed, metric)
         n_val       = len(Xv),
     ))
