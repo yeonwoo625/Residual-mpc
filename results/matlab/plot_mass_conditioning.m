@@ -12,6 +12,10 @@
 % 나머지는 v=10 / 6.5 Hz / 시드 3개). 속도가 1.9 m/s 빨라 절대 오차가 약 2배다.
 % 막대에 빗금으로 표시했다. **40 t 내부의 무게 O/X 쌍비교만 유효하다.**
 %
+% 창 2개가 뜬다.
+%   Figure 1  그림 4칸 (예측 Δn / 예측 Δα / 폐루프 Y / 폐루프 yaw)
+%   Figure 2  같은 값을 표로 (예측 오차 표 + 폐루프 표). 명령창에도 같이 출력된다.
+%
 % 데이터: fig_mass_conditioning.mat  (results/mass_conditioning.py 가 생성)
 % 실행:   results/matlab/ 폴더 안에서 `plot_mass_conditioning`
 % 요구:   base MATLAB 만 (툴박스 불필요). R2013a 이상.
@@ -156,3 +160,121 @@ for k = 1:2
     xlim([0.4 nC+0.6]); ylim([0 max([c0;c1])*1.30])
     xlabel('Payload'); ylabel(yl); title(ttl,'FontSize',11,'FontWeight','normal')
 end
+
+%% ==== Figure 2: 수치 표 ====
+% 그림으로는 0.1% 대 차이가 안 보인다. 같은 값을 표로도 띄운다.
+% (plot_tracking_rmse.m 과 같은 booktabs 스타일)
+
+nRowA = 2*nP;                 % 예측: 채널 2개 x 적재 4개
+nRowB = 2*nC;                 % 폐루프: 지표 2개 x 적재 4개
+nAll  = nRowA + nRowB + 7;    % 제목/헤더/구분 여백
+rh    = 1/nAll;
+
+figure('Color','w','Position',[120 60 940 40+26*nAll])
+axes('Position',[0 0 1 1]); hold on; axis off
+xlim([0 1]); ylim([0 1]); set(gca,'YDir','reverse')
+yy   = @(k) (k+1.2)*rh;
+rule = @(y,wd) line([0.015 0.985],[y y],'Color','k','LineWidth',wd);
+FS   = 9.5;
+
+% ---- 표 A: 예측 오차 ----
+cxA = [0.020 0.150 0.300 0.430 0.560 0.700 0.850];
+hdrA = {'Metric','Payload','no residual','no mass','with mass','shuffled','gain'};
+text(0.5, 0.55*rh, sprintf('Prediction error (held-out validation, n = %d)', n_val), ...
+     'HorizontalAlignment','center','FontSize',11.5,'FontWeight','bold');
+rule(yy(-0.55), 1.4);
+for c = 1:numel(hdrA)
+    al = 'center'; if c <= 2, al = 'left'; end
+    text(cxA(c), yy(0), hdrA{c}, 'HorizontalAlignment',al, ...
+         'FontSize',FS,'FontWeight','bold');
+end
+rule(yy(0.55), 0.8);
+r = 0;
+for k = 1:2
+    if k == 1, ch = DN; sc = 1;      mlab = '\Deltan  [m]';      fmt = '%.4f';
+    else       ch = DA; sc = 180/pi; mlab = '\Delta\alpha  [deg]'; fmt = '%.4f'; end
+    for i = 1:nP
+        r = r + 1;  y = yy(r);
+        if i == 1
+            text(cxA(1), y, mlab, 'HorizontalAlignment','left', ...
+                 'FontSize',FS,'FontAngle','italic','Color',[0.25 0.25 0.25]);
+        end
+        text(cxA(2), y, sprintf('%d t', mp(i)), 'HorizontalAlignment','left','FontSize',FS);
+        e = [pred_err(i,1,1,ch), mean(pred_err(i,2,:,ch)), ...
+             mean(pred_err(i,3,:,ch)), mean(pred_err(i,4,:,ch))] * sc;
+        for c = 1:4
+            fw = 'normal';
+            if c >= 2 && e(c) == min(e(2:4)), fw = 'bold'; end
+            text(cxA(2+c), y, sprintf(fmt, e(c)), 'HorizontalAlignment','center', ...
+                 'FontSize',FS,'FontWeight',fw);
+        end
+        g = 100*(e(2)-e(3))/e(2);
+        text(cxA(7), y, sprintf('%+.1f%%', g), 'HorizontalAlignment','center', ...
+             'FontSize',FS,'Color',[0.35 0.35 0.35]);
+    end
+    if k == 1
+        line([0.015 0.985],[yy(r+0.5) yy(r+0.5)],'Color',[0.5 0.5 0.5],'LineWidth',0.9);
+    end
+end
+rule(yy(nRowA+0.55), 1.4);
+
+% ---- 표 B: 폐루프 ----
+base = nRowA + 2.4;
+cxB  = [0.020 0.190 0.330 0.450 0.575 0.680 0.790];
+hdrB = {'Metric','Payload','no mass','with mass','shuffled','gain','run condition'};
+text(0.5, yy(base-1.15), 'Closed-loop tracking error', ...
+     'HorizontalAlignment','center','FontSize',11.5,'FontWeight','bold');
+rule(yy(base-0.55), 1.4);
+for c = 1:numel(hdrB)
+    al = 'center'; if c <= 2 || c == 7, al = 'left'; end
+    text(cxB(c), yy(base), hdrB{c}, 'HorizontalAlignment',al, ...
+         'FontSize',FS,'FontWeight','bold');
+end
+rule(yy(base+0.55), 0.8);
+r = base;
+for k = 1:2
+    if k == 1, ci = 1; mlab = 'corner |n|  [m]';
+    else       ci = 2; mlab = 'corner \alpha  [deg]'; end
+    for i = 1:nC
+        r = r + 1;  y = yy(r);
+        if i == 1
+            text(cxB(1), y, mlab, 'HorizontalAlignment','left', ...
+                 'FontSize',FS,'FontAngle','italic','Color',[0.25 0.25 0.25]);
+        end
+        text(cxB(2), y, sprintf('%d t', mc(i)), 'HorizontalAlignment','left','FontSize',FS);
+        v = [CM(i,1,ci) CM(i,2,ci) CM(i,3,ci)];
+        for c = 1:3
+            if isnan(v(c))
+                txt = '-';  fw = 'normal';
+            else
+                txt = sprintf('%.3f', v(c));
+                fw = 'normal';
+                if v(c) == min(v(~isnan(v))), fw = 'bold'; end
+            end
+            text(cxB(2+c), y, txt, 'HorizontalAlignment','center', ...
+                 'FontSize',FS,'FontWeight',fw);
+        end
+        g = 100*(v(1)-v(2))/v(1);
+        text(cxB(6), y, sprintf('%+.1f%%', g), 'HorizontalAlignment','center', ...
+             'FontSize',FS,'Color',[0.35 0.35 0.35]);
+        if k == 1
+            text(cxB(7), y, cloop_note{i}, 'HorizontalAlignment','left', ...
+                 'FontSize',FS-1.2,'Color',[0.4 0.4 0.4]);
+        end
+    end
+    if k == 1
+        line([0.015 0.985],[yy(r+0.5) yy(r+0.5)],'Color',[0.5 0.5 0.5],'LineWidth',0.9);
+    end
+end
+rule(yy(base+nRowB+0.55), 1.4);
+
+text(0.015, yy(base+nRowB+1.5), ...
+     ['gain = (no mass - with mass) / no mass.  Bold = best of the three models.  ' ...
+      'Shuffled mass = placebo (same 8-dim input, no mass information).'], ...
+     'HorizontalAlignment','left','FontSize',FS-1.5,'Color',[0.4 0.4 0.4], ...
+     'Interpreter','none');
+text(0.015, yy(base+nRowB+2.1), ...
+     ['40 t closed-loop ran at a different condition (see column) - compare ' ...
+      'within 40 t only.'], ...
+     'HorizontalAlignment','left','FontSize',FS-1.5,'Color',[0.4 0.4 0.4], ...
+     'Interpreter','none');

@@ -131,7 +131,7 @@
 | `plot_extrapolation.m` | 외삽 일반화 — 속도 스윕 / 학습범위 밖 분포 / y·yaw·채터 / 종방향 대가 (2x2) |
 | `plot_tracking_rmse.m` | **Tracking RMSE 표** — 일반화 축(속도·적재·트랙·마찰·조향제약) 11조건 X/Y/Yaw |
 | `plot_openloop.m` | **개루프 예측 오차** — 모델 정확도 자체 + 학습분포에서 멀어질 때의 붕괴 (2칸) |
-| `plot_mass_conditioning.m` | **적재 조건화 근거** — 32/40/48/56t 예측오차 + 폐루프 + 플라시보 (3칸) |
+| `plot_mass_conditioning.m` | **적재 조건화 근거** — 32/40/48/56t 예측오차 + 폐루프 + 플라시보 (그림 4칸 + **표 창**) |
 
 > **수치 출력:** 신규 스크립트(`plot_mass_conditioning`, `plot_extrapolation`,
 > `plot_openloop`, `plot_solvetime`)는 그림을 그리기 전에 **명령창에 표를 출력**한다.
