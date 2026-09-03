@@ -18,6 +18,32 @@ NOM  = [0.12 0.47 0.71];
 RES  = [0.90 0.49 0.13];
 GREY = [0.55 0.55 0.55];
 
+%% ---- 수치 표 출력 (명령창) ----
+fprintf('\n=== Solve time measured in closed loop [ms] ===\n');
+fprintf('%-26s %8s %8s %8s %8s %7s\n', 'configuration', ...
+        'median','mean','p95','max','n');
+for k = 1:size(inloop_stats,1)
+    fprintf('%-26s %8.2f %8.2f %8.2f %8.1f %7d\n', inloop_names{k}, ...
+            inloop_stats(k,1), inloop_stats(k,2), inloop_stats(k,3), ...
+            inloop_stats(k,4), round(inloop_stats(k,5)));
+end
+fprintf('10 Hz budget = %.0f ms\n', budget_ms);
+
+fprintf('\n=== Where the time goes (offline, one SQP iteration) ===\n');
+for k = 1:numel(bd_ms)
+    fprintf('%-28s %8.2f ms\n', bd_names{k}, bd_ms(k));
+end
+
+fprintf('\n=== SQP iteration sweep (offline) ===\n');
+fprintf('%8s %12s %16s %16s\n', 'iters', 'solve [ms]', 'max |ddelta|', 'rms |ddelta|');
+for k = 1:size(sweep,1)
+    fprintf('%8d %12.2f %15.4f%s %15.4f%s\n', round(sweep(k,1)), sweep(k,2), ...
+            sweep(k,3), char(176), sweep(k,4), char(176));
+end
+fprintf('nominal (offline) = %.2f ms\n', nominal_offline_ms);
+fprintf(['ddelta = steering command difference vs the 100-iteration solution. ' ...
+         '10 iterations already converged.\n\n']);
+
 figure('Color','w','Position',[80 80 1280 380])
 
 %% (a) 주행 중 계측 - 막대 중앙값, 수염 p95

@@ -21,6 +21,29 @@ SHAD = [0.94 0.94 0.94];
 vt   = speed.v_target(:);
 vmax = train_v_max;
 
+%% ---- 수치 표 출력 (명령창) ----
+fprintf('\n=== Speed sweep (Q_n=1e-4, 48t, Hockenheim) ===\n');
+fprintf('training speed limit = %.3f m/s\n', vmax);
+fprintf('%6s | %7s %7s %7s | %7s %7s %7s | %8s %8s\n', 'target', ...
+        'n_nom','n_res','dn %','a_nom','a_res','da %','chat_nom','chat_res');
+for k = 1:numel(vt)
+    fprintf('%5.1f  | %7.3f %7.3f %+6.1f%% | %7.2f %7.2f %+6.1f%% | %8.4f %8.4f\n', ...
+            vt(k), speed.nom(k), speed.res(k), speed.improve(k), ...
+            speed.a_nom(k), speed.a_res(k), speed.a_improve(k), ...
+            speed.chat_nom(k), speed.chat_res(k));
+end
+fprintf('\n%6s | %8s %8s | %8s %8s | %s\n', 'target', ...
+        'x_nom[m]','x_res[m]','lap_nom','lap_res','control rate nom/res [Hz]');
+for k = 1:numel(vt)
+    fprintf('%5.1f  | %8.0f %8.0f | %8.1f %8.1f | %.1f / %.1f\n', ...
+            vt(k), speed.x_nom(k), speed.x_res(k), ...
+            speed.lap_nom(k), speed.lap_res(k), ...
+            speed.rate_nom(k), speed.rate_res(k));
+end
+fprintf(['\nn = corner lateral RMS [m], a = corner heading RMS [deg], ' ...
+         'x = longitudinal error [m].\n']);
+fprintf('Only v=14 has matched control rates (10/10 Hz).\n\n');
+
 figure('Color','w','Position',[80 80 1000 720])
 
 %% (a) 속도별 급코너 오차 - 학습 상한 밖에서도 유지되는가

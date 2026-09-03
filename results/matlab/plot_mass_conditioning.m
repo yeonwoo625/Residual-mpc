@@ -37,6 +37,45 @@ CNT = squeeze(sum(~isnan(cloop_err), 3));
 CM  = SUM ./ max(CNT, 1);
 CM(CNT == 0) = NaN;
 
+%% ---- 수치 표 출력 (명령창) ----
+% 그림만 보면 0.1% 대 차이가 안 보인다. 숫자로도 남긴다.
+fprintf('\n');
+fprintf('=== Mass conditioning: prediction error (held-out val, n=%d) ===\n', n_val);
+fprintf('%5s | %9s %9s %9s %9s | %7s\n', 'mass', ...
+        'no resid', 'no mass', 'with mass', 'shuffled', 'gain');
+for k = 1:2
+    if k == 1, ch = DN; sc = 1;      fprintf('--- lateral  dn [m]\n');
+    else       ch = DA; sc = 180/pi; fprintf('--- heading  dalpha [deg]\n'); end
+    for i = 1:nP
+        e0 = pred_err(i,1,1,ch)*sc;
+        e1 = mean(pred_err(i,2,:,ch))*sc;
+        e2 = mean(pred_err(i,3,:,ch))*sc;
+        e3 = mean(pred_err(i,4,:,ch))*sc;
+        fprintf('%4dt | %9.4f %9.4f %9.4f %9.4f | %+6.1f%%\n', ...
+                mp(i), e0, e1, e2, e3, 100*(e1-e2)/e1);
+    end
+end
+
+fprintf('\n=== Mass conditioning: closed-loop tracking ===\n');
+fprintf('%5s | %9s %9s %9s | %7s | %s\n', 'mass', ...
+        'no mass', 'with mass', 'shuffled', 'gain', 'run condition');
+for k = 1:2
+    if k == 1, ci = 1; fprintf('--- corner |n| RMS [m]\n');
+    else       ci = 2; fprintf('--- corner alpha RMS [deg]\n'); end
+    for i = 1:nC
+        g = 100*(CM(i,1,ci)-CM(i,2,ci))/CM(i,1,ci);
+        note = ''; if k == 1, note = cloop_note{i}; end
+        fprintf('%4dt | %9.3f %9.3f %9.3f | %+6.1f%% | %s\n', ...
+                mc(i), CM(i,1,ci), CM(i,2,ci), CM(i,3,ci), g, note);
+    end
+end
+fprintf(['\ngain = (no mass - with mass) / no mass.  ' ...
+         'Positive = conditioning looks better.\n']);
+fprintf(['Placebo (shuffled mass) carries no mass information but the same ' ...
+         '8-dim input.\n']);
+fprintf(['40t closed-loop ran at a different condition - compare within 40t ' ...
+         'only.\n\n']);
+
 figure('Color','w','Position',[50 40 1060 720])
 
 %% (a)(b) 예측 오차 - 무게를 알려줘도 안 줄어든다

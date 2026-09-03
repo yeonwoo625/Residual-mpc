@@ -27,6 +27,23 @@ PUR  = [0.80 0.47 0.65];      % Okabe-Ito reddish purple
 h  = horizon_s(:);
 DN = 2;                        % 채널 인덱스: 1=ds 2=dn 3=dalpha 4=dv
 
+%% ---- 수치 표 출력 (명령창) ----
+fprintf('\n=== Open-loop prediction error, lateral dn [m] ===\n');
+fprintf('%-20s %-16s', 'case', 'distribution');
+fprintf('%9.1fs', h); fprintf('\n');
+for c = 1:numel(case_)
+    fprintf('%-20s %-16s', case_{c}, dist{c});
+    fprintf('%10.4f', squeeze(err(c,:,1,DN)));       % nominal
+    fprintf('   <- nominal\n');
+    fprintf('%-20s %-16s', '', '');
+    fprintf('%10.4f', squeeze(err(c,:,2,DN)));       % +residual
+    fprintf('   <- +residual\n');
+    fprintf('%-20s %-16s', '', 'reduction');
+    fprintf('%9.0f%%', improve_dn(c,:)); fprintf('\n');
+end
+fprintf(['\nPositive reduction = residual improves the model. ' ...
+         'It degrades away from the training data.\n\n']);
+
 figure('Color','w','Position',[80 80 1000 380])
 
 %% (a) 학습 분포 안에서의 예측 오차 (Hockenheim v=12)

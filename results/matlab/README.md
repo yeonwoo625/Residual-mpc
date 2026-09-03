@@ -133,6 +133,11 @@
 | `plot_openloop.m` | **개루프 예측 오차** — 모델 정확도 자체 + 학습분포에서 멀어질 때의 붕괴 (2칸) |
 | `plot_mass_conditioning.m` | **적재 조건화 근거** — 32/40/48/56t 예측오차 + 폐루프 + 플라시보 (3칸) |
 
+> **수치 출력:** 신규 스크립트(`plot_mass_conditioning`, `plot_extrapolation`,
+> `plot_openloop`, `plot_solvetime`)는 그림을 그리기 전에 **명령창에 표를 출력**한다.
+> 그림으로는 0.1% 대 차이가 안 보이므로 숫자를 같이 남긴다. `diary` 로 받으면 그대로
+> 논문 표에 쓸 수 있다.
+
 > **툴박스 금지:** base MATLAB 만 쓴다. `nanmean`/`nanstd`/`prctile`/`boxplot` 등
 > Statistics Toolbox 함수는 쓰지 않는다 — 다른 PC에 툴박스가 없으면 스크립트가
 > 죽는다. NaN 평균이 필요하면 `sum(Z.*~isnan(Z))./sum(~isnan(Z))` 로 직접 계산한다.
