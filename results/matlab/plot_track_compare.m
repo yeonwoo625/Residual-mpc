@@ -1,12 +1,20 @@
 % 급코너에서의 참조 경로 vs 주행 궤적 - nominal MPC / residual MPC
 %
-% 기본은 **한 칸**만 그린다: 56 t, 경로 좌표 (s, n).
+% 기본은 **한 칸**만 그린다: 56 t, 지도(X, Y) 확대.
 % 상단 설정으로 적재와 표시 내용을 바꾼다.
 %
-%   SHOW = 'n'     경로 좌표 (s, n) 한 칸        <- 기본. 차이를 읽는 그림
-%   SHOW = 'map'   전역 좌표 (X, Y) 한 칸        <- 코너 형상
+%   SHOW = 'map'   전역 좌표 (X, Y) 한 칸   <- 기본. 참조 경로가 원래 곡선 그대로
+%   SHOW = 'n'     경로 좌표 (s, n) 한 칸   <- 참조 경로가 n=0 직선. 차이가 가장 뚜렷
 %   SHOW = 'both'  둘 다 (1 x 2)
 %   MASS_T = 56    32 또는 56
+%
+% 지도 칸에서 창 반폭(HALF_MAP)을 얼마로 두느냐가 관건이다. R=37.8 m 코너에서:
+%
+%     반폭   창 폭   경로 휨   최대 편차   편차/창폭
+%      55 m  110 m   33.5 m    1.12 m      1.0%   <- 편차가 안 보인다
+%      25 m   50 m    8.0 m    1.12 m      2.2%
+%      10 m   20 m    1.3 m    1.12 m      5.6%   <- 휨과 편차가 비슷. 둘 다 보인다
+%       5 m   10 m    0.3 m    1.12 m     11.2%   <- 편차는 잘 보이나 곡선이 사라진다
 %
 % 경로 좌표가 왜 정직한가. 가로축 s(진행 거리)와 세로축 n(횡편차)은 서로 다른
 % 물리량이라 눈금 간격이 달라도 된다(시간-속도 그래프와 같은 이치). 그래서 축
@@ -28,10 +36,11 @@
 clear; close all
 load('fig_track_compare.mat')
 
-MASS_T = 56;             % 32 또는 56
-CORNER = 2;              % 1 = s 1232 m,  2 = s 1726 m (차이가 가장 큰 코너)
-SHOW   = 'n';            % 'n' | 'map' | 'both'
-HALF   = zoom_half;      % 창 반폭 [m]
+MASS_T   = 56;           % 32 또는 56
+CORNER   = 2;            % 1 = s 1232 m,  2 = s 1726 m (차이가 가장 큰 코너)
+SHOW     = 'map';        % 'map' | 'n' | 'both'
+HALF_MAP = 10;           % 지도 칸 창 반폭 [m]
+HALF_N   = zoom_half;    % 경로좌표 칸 창 반폭 [m] (기본 55)
 
 REF  = [0.72 0.72 0.72];
 NOM  = [0.12 0.47 0.71];
@@ -43,7 +52,7 @@ zs = zoom_s(CORNER);
 cx = zoom_xy(CORNER,1);  cy = zoom_xy(CORNER,2);
 
 %% ---- 수치 표 (명령창) — 모든 조건을 출력한다 ----
-fprintf('\n=== Corner window comparison (window = s +- %.0f m) ===\n', HALF);
+fprintf('\n=== Corner window comparison (window = s +- %.0f m) ===\n', zoom_half);
 fprintf('%7s %5s %14s %12s %12s\n','corner','mass','controller','RMS |n| [m]','max |n| [m]');
 for z = 1:numel(zoom_s)
     for a = 1:numel(mass)
@@ -64,7 +73,7 @@ xr = traj_x{mi,2};  yr = traj_y{mi,2};   sr = traj_s{mi,2};  nr = traj_n{mi,2};
 
 switch lower(SHOW)
     case 'n',    panels = {'n'};            W = 620;
-    case 'map',  panels = {'map'};          W = 620;
+    case 'map',  panels = {'map'};          W = 560;
     otherwise,   panels = {'map','n'};      W = 1120;
 end
 figure('Color','w','Position',[80 80 W 520])
@@ -75,6 +84,11 @@ for pIdx = 1:numel(panels)
 
     if strcmp(panels{pIdx}, 'map')
         % --- 전역 좌표 (지도). 축 비율 1:1 필수 ---
+        % 참조 경로가 원래 곡선 그대로 나온다. 다만 1 m 편차를 보려면 창을
+        % 좁혀야 한다. R=37.8 m 코너에서 반폭 10 m 면 경로 휨(1.32 m)과 최대
+        % 편차(1.12 m)가 비슷해 둘 다 보인다. 55 m 로 두면 편차가 창 폭의 1% 라
+        % 안 보이고, 5 m 로 줄이면 편차는 잘 보이나 곡선이 거의 직선이 된다.
+        HALF = HALF_MAP;
         box on; set(gca,'FontSize',11,'TickDir','out')
         p0 = plot(ref_x, ref_y, '-', 'Color', REF, 'LineWidth', 4);
         p1 = plot(xn, yn, '-', 'Color', NOM, 'LineWidth', 1.6);
@@ -89,6 +103,7 @@ for pIdx = 1:numel(panels)
               'FontSize',12,'FontWeight','normal')
     else
         % --- 경로 좌표 (s, n). 축 값은 실제 미터 ---
+        HALF = HALF_N;
         box off
         set(gca,'FontSize',11,'TickDir','out','XGrid','on','YGrid','on', ...
                 'GridColor',[.85 .85 .85],'GridAlpha',1,'Layer','bottom')
