@@ -1,15 +1,24 @@
 % 급코너에서의 참조 경로 vs 주행 궤적 - nominal MPC / residual MPC, 32 t 와 56 t
 %
-%   왼쪽 칸  전역 좌표 (X, Y). 실제 스케일. 코너 형상과 주행 라인.
-%   오른쪽 칸 횡오차 |n| vs 경로거리 s. 같은 구간. 여기서 차이를 읽는다.
+%   왼쪽 칸  전역 좌표 (X, Y). 지도. 코너 형상과 주행 라인.
+%   오른쪽 칸 경로 좌표 (s, n). 참조 경로가 n=0 인 직선이 된다. 차이를 읽는 칸.
 %
-% 두 칸 모두 **실제 값**이다. 과장 배율을 쓰지 않는다.
+% 두 칸 모두 **축 값이 실제 미터**다. 과장 배율을 쓰지 않는다.
 %
-% 왼쪽 칸에서 1 m 편차는 창 폭의 1% 남짓이라 크게 보이지 않는다. 이는 왜곡이
-% 아니라 사실이다 - 2,546 m 트랙에서 오차가 1 m 라는 뜻이다. 차이를 정량적으로
-% 보려면 오른쪽 칸을 본다. 오른쪽 칸의 가로 회색선(|n|=0)이 곧 참조 경로다.
-% 왼쪽 칸을 더 크게 보고 싶으면 HALF 를 줄인다(창이 좁아지고 편차가 상대적으로
-% 커 보인다. 대신 코너 전체가 안 들어온다).
+% 왜 오른쪽 칸에서는 차이가 크게 보이는가. 지도(왼쪽)는 X, Y 가 같은 물리량이라
+% 축 비율을 반드시 1:1 로 둬야 하고(axis equal), 그래서 2,546 m 트랙 위의 1 m
+% 편차는 창 폭의 1% 로 작게 보인다. 반면 경로 좌표(오른쪽)는 가로가 진행 거리 s,
+% 세로가 횡편차 n 으로 **서로 다른 물리량**이라 눈금 간격이 달라도 된다. 시간-속도
+% 그래프에서 축 비율을 따지지 않는 것과 같다. 그래서 축 값을 실제 미터로 두고도
+% 궤적 차이를 크게 보여줄 수 있다 - 왜곡이 아니다.
+%
+% (참고: 지도에서 편차만 K 배 늘려 그리는 방법도 있으나, 그러면 한 그림에 두
+%  배율이 섞여 축 눈금을 정직하게 붙일 수 없다. 진행 방향은 실제 스케일이고
+%  수직 방향만 K 배이므로, 눈금을 K 로 나누면 편차는 맞고 코너 반경이 K 배
+%  틀린다. 그래서 쓰지 않는다.)
+%
+% n 은 부호를 살렸다. n > 0 = 진행방향 기준 왼쪽. 이 코너에서는 두 제어기 모두
+% n < 0 (바깥쪽으로 밀림) 이다. 급코너 구간(|kappa| >= 0.02)은 음영으로 표시한다.
 %
 % CORNER 로 두 코너 중 하나를 고른다. 코너 2 (s=1726 m) 에서 차이가 가장 크다.
 %
@@ -73,27 +82,46 @@ for i = 1:nM
     title(sprintf('%d t  -  corner %d,  s = %.0f m', mass(i), CORNER, zs), ...
           'FontSize',11,'FontWeight','normal')
 
-    % --- (우) 횡오차 |n| vs s ---
+    % --- (우) 경로 좌표계 (s, n) - 참조 경로가 n=0 인 직선이 된다 ---
+    % 가로축 s(진행 거리) 와 세로축 n(횡편차) 은 서로 다른 물리량이라 눈금 간격이
+    % 달라도 왜곡이 아니다. 그래서 축 값은 실제 미터 그대로 두고도 궤적 차이를
+    % 크게 보여줄 수 있다. 부호를 살려 어느 쪽으로 벗어나는지도 보인다
+    % (n > 0 = 진행방향 기준 왼쪽).
     subplot(nM,2,(i-1)*2+2); hold on; box off
     set(gca,'FontSize',10,'TickDir','out','XGrid','on','YGrid','on', ...
             'GridColor',[.85 .85 .85],'GridAlpha',1,'Layer','bottom')
     wn = abs(sn - zs) <= HALF;   wr = abs(sr - zs) <= HALF;
-    plot([zs-HALF zs+HALF], [0 0], '-', 'Color', REF, 'LineWidth', 3);
-    plot(sn(wn), abs(nn(wn)), '-', 'Color', NOM, 'LineWidth', 1.8);
-    plot(sr(wr), abs(nr(wr)), '-', 'Color', RES, 'LineWidth', 1.8);
-    % nn/nr 은 셀에서 행 벡터로 나오고 창 안 점 개수도 달라 세로 결합이 안 된다.
-    ymax = max([max(abs(nn(wn))), max(abs(nr(wr)))]) * 1.35;
-    if isempty(ymax) || ~isfinite(ymax) || ymax <= 0
-        ymax = 1;
+    nv = [nn(wn), nr(wr)];
+    ylo = min(nv);  yhi = max(nv);
+    pad = max((yhi - ylo) * 0.30, 0.05);
+    ylo = min(ylo, 0) - pad;   yhi = max(yhi, 0) + pad;
+
+    % 급코너 구간(|kappa| >= 0.02, R <= 50 m) 음영 - 어디가 코너인지 표시
+    wk = (ref_s >= zs-HALF) & (ref_s <= zs+HALF) & (abs(ref_kappa) >= 0.02);
+    if any(wk)
+        k1 = min(ref_s(wk));  k2 = max(ref_s(wk));
+        patch([k1 k2 k2 k1], [ylo ylo yhi yhi], [0.94 0.94 0.94], ...
+              'EdgeColor','none');
+        text((k1+k2)/2, yhi*0.90 + ylo*0.10, 'sharp corner', ...
+             'HorizontalAlignment','center','FontSize',8.5,'Color',[0.55 0.55 0.55]);
     end
-    text(zs-HALF*0.95, ymax*0.93, ...
-         sprintf('RMS  %.3f  vs  %.3f m', corner_stat(i,1,CORNER,1), ...
-                 corner_stat(i,2,CORNER,1)), 'FontSize',9.5,'Color',[0.3 0.3 0.3]);
-    text(zs-HALF*0.95, ymax*0.83, ...
-         sprintf('max  %.3f  vs  %.3f m', corner_stat(i,1,CORNER,2), ...
-                 corner_stat(i,2,CORNER,2)), 'FontSize',9.5,'Color',[0.3 0.3 0.3]);
-    xlim([zs-HALF zs+HALF]); ylim([0 ymax])
-    xlabel('Path distance  s  [m]'); ylabel('Lateral error  |n|  [m]')
-    title(sprintf('%d t  -  lateral error, same window', mass(i)), ...
+
+    q0 = plot([zs-HALF zs+HALF], [0 0], '-', 'Color', REF, 'LineWidth', 3);
+    q1 = plot(sn(wn), nn(wn), '-', 'Color', NOM, 'LineWidth', 1.8);
+    q2 = plot(sr(wr), nr(wr), '-', 'Color', RES, 'LineWidth', 1.8);
+    if i == 1
+        legend([q0 q1 q2], {'reference path  (n = 0)','Nominal MPC','Residual MPC'}, ...
+               'Location','southoutside','Orientation','horizontal', ...
+               'Box','off','FontSize',9);
+    end
+    text(zs-HALF*0.95, ylo + (yhi-ylo)*0.10, ...
+         sprintf('RMS  %.3f  vs  %.3f m   |   max  %.3f  vs  %.3f m', ...
+                 corner_stat(i,1,CORNER,1), corner_stat(i,2,CORNER,1), ...
+                 corner_stat(i,1,CORNER,2), corner_stat(i,2,CORNER,2)), ...
+         'FontSize',9,'Color',[0.3 0.3 0.3]);
+    xlim([zs-HALF zs+HALF]); ylim([ylo yhi])
+    xlabel('Path distance  s  [m]')
+    ylabel('Lateral deviation  n  [m]')
+    title(sprintf('%d t  -  path frame (axes both true metres)', mass(i)), ...
           'FontSize',11,'FontWeight','normal')
 end
