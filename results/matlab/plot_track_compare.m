@@ -79,7 +79,12 @@ for i = 1:nM
     plot([zs-HALF zs+HALF], [0 0], '-', 'Color', REF, 'LineWidth', 3);
     plot(sn(wn), abs(nn(wn)), '-', 'Color', NOM, 'LineWidth', 1.8);
     plot(sr(wr), abs(nr(wr)), '-', 'Color', RES, 'LineWidth', 1.8);
-    ymax = max([abs(nn(wn)); abs(nr(wr))]) * 1.35;
+    % nn/nr 은 셀에서 행 벡터로 나오고 창 안 점 개수도 서로 달라, 세로로 붙이면
+    % 차원 불일치가 난다. 각자 최대값을 먼저 구해 스칼라끼리 비교한다.
+    ymax = max([max(abs(nn(wn))), max(abs(nr(wr)))]) * 1.35;
+    if isempty(ymax) || ~isfinite(ymax) || ymax <= 0
+        ymax = 1;                      % 창 안에 점이 없을 때의 안전값
+    end
     text(zs-HALF*0.95, ymax*0.93, ...
          sprintf('RMS  %.3f  vs  %.3f m', corner_stat(i,1,CORNER,1), ...
                  corner_stat(i,2,CORNER,1)), 'FontSize',9.5,'Color',[0.3 0.3 0.3]);

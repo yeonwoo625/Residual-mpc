@@ -50,8 +50,8 @@ figure('Color','w','Position',[80 80 1000 380])
 subplot(1,2,1); hold on; box off
 set(gca,'FontSize',10,'TickDir','out','XGrid','on','YGrid','on', ...
         'GridColor',[.85 .85 .85],'GridAlpha',1,'Layer','bottom')
-e_nom = squeeze(err(1,:,1,DN));
-e_res = squeeze(err(1,:,2,DN));
+e_nom = squeeze(err(1,:,1,DN)); e_nom = e_nom(:);
+e_res = squeeze(err(1,:,2,DN)); e_res = e_res(:);
 p1 = plot(h, e_nom, '-o', 'Color', NOM, 'LineWidth', 2, 'MarkerSize', 6, ...
           'MarkerFaceColor', NOM);
 p2 = plot(h, e_res, '-s', 'Color', RES, 'LineWidth', 2, 'MarkerSize', 6, ...
@@ -76,7 +76,8 @@ cols = [RES; GRN; NOM; PUR];
 mk   = {'-s','-o','-^','-v'};
 hh = zeros(1, size(improve_dn,1));
 for c = 1:size(improve_dn,1)
-    hh(c) = plot(h, improve_dn(c,:), mk{c}, 'Color', cols(c,:), ...
+    yv = improve_dn(c,:); yv = yv(:);
+    hh(c) = plot(h, yv, mk{c}, 'Color', cols(c,:), ...
                  'LineWidth', 2, 'MarkerSize', 6, 'MarkerFaceColor', cols(c,:));
 end
 plot([0 2.15], [0 0], '-', 'Color', [0.3 0.3 0.3], 'LineWidth', 1.0);
