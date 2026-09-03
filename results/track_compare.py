@@ -50,7 +50,11 @@ def main():
     s_ref = pi["dense_s"]
     x_ref = pi["x_spline"](s_ref)
     y_ref = pi["y_spline"](s_ref)
-    psi_ref, kap = pi["phi"], pi["kappa"]
+    # phi 는 ±pi 로 감겨 있다. 감김 지점에서 interp1/np.interp 이 그 사이를 직선
+    # 보간하면 방향이 한 바퀴 돌아 수직 오프셋이 엉뚱한 쪽으로 튄다 (s=1373 /
+    # 1711 / 2181 m 세 곳. 1711 m 는 코너 2 창 안이라 그림에 그대로 드러난다).
+    # unwrap 해서 연속으로 만든다 - sin/cos 값은 그대로다.
+    psi_ref, kap = np.unwrap(pi["phi"]), pi["kappa"]
     kf = _kappa_fn()
 
     def to_xy(s, n):

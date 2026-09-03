@@ -81,6 +81,9 @@ for i = 1:nM
     subplot(nM,3,(i-1)*3+2); hold on; box on
     set(gca,'FontSize',10,'TickDir','out')
     % (s, n) -> 전역 좌표, 횡편차만 MAG 배. 경로 형상은 그대로 둔다.
+    % ref_psi 는 저장 시점에 unwrap 되어 있다. 감긴(±pi) 상태로 interp1 하면
+    % 감김 지점(s=1373/1711/2181 m)에서 방향이 한 바퀴 돌아 궤적이 뾰족하게
+    % 튄다 - 특히 1711 m 는 코너 2 창 안이라 ×20 에서 20 m 도약으로 보인다.
     smn = mod(sn(:), s_total);   smr = mod(sr(:), s_total);
     pxn = interp1(ref_s, ref_x,   smn, 'linear', 'extrap');
     pyn = interp1(ref_s, ref_y,   smn, 'linear', 'extrap');
