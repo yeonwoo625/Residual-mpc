@@ -98,7 +98,25 @@ def main():
             print(f"{m:4d}t{lbl:>14}{r['rate_hz']:8.1f}Hz{r['corner_rms']:10.3f}"
                   f"{r['n_mean']:9.3f}{r['n_max']:9.3f}")
 
+    # 코너 창별 지표 [적재, 제어기, 코너] = (RMS |n|, max |n|)
+    CW = np.zeros((nM, 2, len(zoom_s), 2))
+    print(f"\n코너 창별 횡오차 (창 = 코너 중심 +-{HALF:.0f} m 의 경로거리 구간)")
+    print(f"{'코너':>6}{'적재':>6}{'Nominal RMS':>13}{'Residual RMS':>14}"
+          f"{'Nominal max':>13}{'Residual max':>14}")
+    for zi, zs in enumerate(zoom_s):
+        for i, m in enumerate(MASSES):
+            for k in range(2):
+                sv, nv = TS[i, k], TN[i, k]
+                w = np.abs(np.mod(sv - zs + s_ref[-1] / 2, s_ref[-1])
+                           - s_ref[-1] / 2) <= HALF
+                CW[i, k, zi] = [np.sqrt((nv[w] ** 2).mean()), np.abs(nv[w]).max()]
+            print(f"{zi+1:6d}{m:5d}t{CW[i,0,zi,0]:13.3f}{CW[i,1,zi,0]:14.3f}"
+                  f"{CW[i,0,zi,1]:13.3f}{CW[i,1,zi,1]:14.3f}")
+
     D = dict(ref_x=x_ref, ref_y=y_ref, ref_s=s_ref, ref_kappa=kap,
+             corner_stat=CW,
+             corner_stat_dim=np.array(["mass", "variant", "corner",
+                                       "(rms_n, max_n)"], dtype=object),
              s_total=s_ref[-1],
              zoom_xy=zoom, zoom_s=zoom_s, zoom_half=HALF,
              mass=np.array(MASSES),
