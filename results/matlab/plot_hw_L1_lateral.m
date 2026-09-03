@@ -1,4 +1,4 @@
-% Highway L1, v=12 — 횡방향 오차 n vs 경로거리 s
+% Highway L1 — 횡방향 오차 n vs 경로거리 s
 %
 % 참조 경로는 n=0 인 가로 직선이 된다(Frenet 좌표). 두 축이 서로 다른 물리량이라
 % 눈금 간격이 달라도 왜곡이 아니며, 축 값은 실제 미터다.
@@ -12,13 +12,16 @@
 % 요구:   base MATLAB 만. R2013a 이상.
 
 clear; close all
-load('fig_highway_L1.mat')
+
+% v=20 이 기본. v=12 를 보려면 아래를 'fig_highway_L1.mat' 로 바꾼다.
+MATFILE = 'fig_highway_L1_v20.mat';
+load(MATFILE)
 
 NOM  = [0.12 0.47 0.71];
 RES  = [0.90 0.49 0.13];
 REF  = [0.72 0.72 0.72];
 
-fprintf('\n=== Highway L1, v=12 : lateral error (s >= %.0f m) ===\n', s_min);
+fprintf('\n=== Highway L1, v=%.0f : lateral error (s >= %.0f m) ===\n', v_target, s_min);
 fprintf('%14s %12s %12s %12s %16s\n', '', 'Y RMSE [m]', 'mean|n|', 'max|n|', 'corner RMSE');
 for i = 1:numel(variant)
     fprintf('%14s %12.3f %12.3f %12.3f %16.3f\n', variant{i}, ...
@@ -64,5 +67,5 @@ text(max(sn)*0.97, yhi*0.86, 'shaded = top 20% curvature', ...
      'HorizontalAlignment','right','FontSize',9,'Color',[0.55 0.55 0.55]);
 xlim([s_min max(sn)]); ylim([ylo yhi])
 xlabel('Path distance  s  [m]'); ylabel('Lateral deviation  n  [m]')
-title('Highway No.1 (shifted path),  v = 12 m/s  -  lateral error', ...
+title(sprintf('Highway No.1 (shifted path),  v = %.0f m/s  -  lateral error', v_target), ...
       'FontSize',12,'FontWeight','normal')

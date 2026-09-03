@@ -1,4 +1,4 @@
-% Highway L1, v=12 — Y / Yaw 오차 지표 (막대 + 표)
+% Highway L1 — Y / Yaw 오차 지표 (막대 + 표)
 %
 %   Y   = 횡편차 n 의 RMSE [m]        목표 n = 0 (경로 위)
 %   Yaw = 헤딩오차 alpha 의 RMSE [deg] 목표 alpha = 0 (경로와 나란함)
@@ -13,7 +13,10 @@
 % 요구:   base MATLAB 만. R2013a 이상.
 
 clear; close all
-load('fig_highway_L1.mat')
+
+% v=20 이 기본. v=12 를 보려면 아래를 'fig_highway_L1.mat' 로 바꾼다.
+MATFILE = 'fig_highway_L1_v20.mat';
+load(MATFILE)
 
 NOM  = [0.12 0.47 0.71];
 RES  = [0.90 0.49 0.13];
@@ -23,7 +26,8 @@ sel  = [1 6 4];                       % Y RMSE, corner Y RMSE, Yaw RMSE
 lab  = {'Y RMSE', 'Y RMSE (corner)', 'Yaw RMSE'};
 unit = {'[m]', '[m]', '[deg]'};
 
-fprintf('\n=== Highway L1, v=12 : tracking error (s >= %.0f m) ===\n', s_min);
+fprintf('\n=== Highway L1, v=%.0f : tracking error ===\n', v_target);
+fprintf('[all,  s >= %.0f m]\n', s_min);
 fprintf('%14s', ''); fprintf('%18s', metric{:}); fprintf('\n');
 for i = 1:numel(variant)
     fprintf('%14s', variant{i}); fprintf('%18.3f', met(i,:)); fprintf('\n');
@@ -33,7 +37,21 @@ for j = 1:size(met,2)
     if j >= 7, fprintf('%17s ', '-');
     else       fprintf('%17.1f%%', 100*(met(1,j)-met(2,j))/met(1,j)); end
 end
-fprintf('\n\nBoth runs at 10 Hz. Corner = top 20%% curvature (R <= %.0f m).\n\n', 1/kappa_thr);
+fprintf('\n');
+if ~isnan(met_hi(1,1))
+    fprintf('[high speed,  v >= %.0f m/s]\n', v_hi);
+    fprintf('%14s', ''); fprintf('%18s', metric{:}); fprintf('\n');
+    for i = 1:numel(variant)
+        fprintf('%14s', variant{i}); fprintf('%18.3f', met_hi(i,:)); fprintf('\n');
+    end
+    fprintf('%14s', 'improvement');
+    for j = 1:size(met_hi,2)
+        if j >= 7, fprintf('%17s ', '-');
+        else       fprintf('%17.1f%%', 100*(met_hi(1,j)-met_hi(2,j))/met_hi(1,j)); end
+    end
+    fprintf('\n');
+end
+fprintf('\nBoth runs at 10 Hz. Corner = top 20%% curvature (R <= %.0f m).\n\n', 1/kappa_thr);
 
 figure('Color','w','Position',[80 80 940 400])
 
@@ -59,7 +77,8 @@ end
 set(gca,'XTick',1:3,'XTickLabel', xt)
 xlim([0.4 3.6]); ylim([0 max(met(1,sel))*1.25])
 ylabel('RMSE   (m for Y,  deg for Yaw)')
-title('(a)  Absolute error','FontSize',12,'FontWeight','normal')
+title(sprintf('(a)  Absolute error   (v = %.0f m/s)', v_target), ...
+      'FontSize',12,'FontWeight','normal')
 
 %% (b) 감소율
 subplot(1,2,2); hold on; box off

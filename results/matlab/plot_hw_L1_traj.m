@@ -1,4 +1,4 @@
-% Highway L1, v=12 — 주행 궤적 (전역 좌표)
+% Highway L1 — 주행 궤적 (전역 좌표)
 %
 %   왼쪽 칸  전체 경로 (932 m). 축 비율 1:1. 세 선이 거의 겹친다 - 사실이다.
 %            932 m 경로에서 최대 편차가 0.84 m 라 화면상 0.1% 다.
@@ -12,7 +12,10 @@
 % 요구:   base MATLAB 만. R2013a 이상.
 
 clear; close all
-load('fig_highway_L1.mat')
+
+% v=20 이 기본. v=12 를 보려면 아래를 'fig_highway_L1.mat' 로 바꾼다.
+MATFILE = 'fig_highway_L1_v20.mat';
+load(MATFILE)
 
 ZOOM_HALF = 12;        % 확대 창 반폭 [m]. 줄이면 편차가 더 크게 보인다
 
@@ -31,7 +34,7 @@ sz = sn(idx(k));
 cx = interp1(ref_s, ref_x, sz);
 cy = interp1(ref_s, ref_y, sz);
 
-fprintf('\n=== Highway L1, v=12 : trajectory ===\n');
+fprintf('\n=== Highway L1, v=%.0f : trajectory ===\n', v_target);
 fprintf('path length %.0f m, min radius %.1f m\n', s_total, 1/max(abs(ref_kappa)));
 fprintf('%14s %12s %12s %12s\n','','distance [m]','max|n| [m]','rate [Hz]');
 for i = 1:numel(variant)
