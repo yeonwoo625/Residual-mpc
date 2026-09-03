@@ -11,8 +11,14 @@
 % 2번 칸은 경로에 수직인 방향으로만 n 을 MAG 배 늘려 다시 그린 것이다.
 %     X = Xr(s) - sin(psi) * (n * MAG),   Y = Yr(s) + cos(psi) * (n * MAG)
 % 도로의 곡선 형상은 그대로 두고 편차만 키우므로 '어느 쪽으로 얼마나 밀리는지'가
-% 보인다. **실제 거리가 아니므로 제목에 배율을 반드시 표기한다.**
-% 정량 비교는 3번 칸(실제 값)으로 한다.
+% 보인다.
+%
+% ** 축 단위에 대하여 ** X/Y 축 격자는 실제 미터가 맞다 - 참조 경로(회색)는 제
+% 위치에 그려진다. 왜곡된 것은 **경로에 수직인 방향뿐**이라, 축 단위를 [m] 이
+% 아닌 다른 것으로 바꿔 쓸 수 없다(진행 방향은 실제 스케일이므로 균일 배율이
+% 아니다). 그래서 축은 [m] 로 두고, 화면상 MAG 미터가 실제 횡편차 1 m 임을
+% 보여주는 **왜곡 눈금자**를 칸 안에 그린다. 지질 단면도의 수직 과장 표기와 같은
+% 방식이다. 정량 비교는 3번 칸(실제 값)으로 한다.
 %
 % CORNER 로 두 코너 중 하나를 고른다. 코너 2 (s=1726 m) 에서 차이가 가장 크다.
 %
@@ -98,8 +104,17 @@ for i = 1:nM
     plot(xrm, yrm, '-', 'Color', RES, 'LineWidth', 1.8);
     axis equal
     xlim([cx-HALF cx+HALF]); ylim([cy-HALF cy+HALF]);
-    xlabel('X  [m]')
-    title(sprintf('%d t  -  lateral deviation \\times%d  (not to scale)', ...
+    % 왜곡 눈금자: 화면상 MAG 미터가 실제 횡편차 1 m 임을 보여준다.
+    % 축 격자는 실제 미터(참조 경로는 제 위치)이고, 왜곡된 것은 경로에 수직인
+    % 방향뿐이라 축 단위를 바꿔 쓸 수 없다. 그래서 눈금자로 표기한다.
+    bx = cx - HALF*0.86;  by = cy - HALF*0.86;
+    plot([bx bx], [by by+MAG], '-', 'Color', 'k', 'LineWidth', 2.2);
+    plot([bx-HALF*0.03 bx+HALF*0.03], [by by], '-', 'Color','k', 'LineWidth', 1.4);
+    plot([bx-HALF*0.03 bx+HALF*0.03], [by+MAG by+MAG], '-', 'Color','k', 'LineWidth', 1.4);
+    text(bx+HALF*0.06, by+MAG/2, {'1 m','actual'}, ...
+         'FontSize',9,'Color','k','VerticalAlignment','middle');
+    xlabel('X  [m]   (axes are true scale)')
+    title(sprintf('%d t  -  lateral deviation exaggerated \\times%d', ...
           mass(i), MAG), 'FontSize',11,'FontWeight','normal')
 
     % --- (3) 횡오차 |n| vs s ---
