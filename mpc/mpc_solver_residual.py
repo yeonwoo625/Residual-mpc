@@ -198,6 +198,27 @@ class MPCSolverResidual:
         # SQP_ITER=1 은 nominal(SQP_RTI 1회)과 계산량을 맞춘 진짜 RTI 구성(0.99ms)이나
         # 해가 달라지므로 주행 재검증이 필요하다.
         ocp.solver_options.nlp_solver_max_iter = int(os.environ.get("SQP_ITER", "10"))
+        # RTI_LOG=1 이면 l4acados 의 수렴 판정 분기가 켜져 조기 종료한다.
+        #
+        # l4acados 의 solve() 에는 수렴 판정이 있으나 rti_log_residuals 에 연동돼
+        # 있고 acados 기본값이 0 이라 한 번도 실행되지 않았다. 그래서 수렴한 뒤에도
+        # 지정 횟수를 다 돌았다. 반면 acados 자체 SQP 는 조기 종료하므로 nominal 은
+        # 반복 상한을 20 으로 올려도 0.41 ms 로 동일하다.
+        #
+        # offline 실측 (N=20, 같은 x0 반복):
+        #   Cython + 조기종료 끔 (현재 배포)   9.05 ms,  실제 10 회
+        #   ctypes + 조기종료 끔               16.70 ms, 실제 10 회
+        #   ctypes + 조기종료 켬                2.11 ms, 실제  1 회
+        #   ctypes + 조기종료 켬, 상한 100      2.13 ms, 실제  1 회
+        # ctypes 는 호출 오버헤드로 느리지만 9 회를 안 도는 이득이 훨씬 크다.
+        #
+        # 주행 기본값은 끈 상태로 둔다. 켜면 10 회 -> 1 회로 해가 달라져
+        # (콜드 상태 기준 조향 최대 11.5 deg) 기존 주행 결과를 전부 재검증해야 한다.
+        ocp.solver_options.rti_log_residuals = int(os.environ.get("RTI_LOG", "0"))
+        if ocp.solver_options.rti_log_residuals:
+            # l4acados 의 transform_ocp 이 요구한다 (SQP_RTI 에서는 일부 잔차만
+            # 계산 가능하므로 '가능한 것만 로깅' 모드를 켜야 한다).
+            ocp.solver_options.rti_log_only_available_residuals = 1
         
         self.ocp = ocp
         self.constraint = constraint
@@ -260,7 +281,10 @@ class MPCSolverResidual:
             B=B_MATRIX,
             residual_model=self.residual_model,
             build_c_code=True,
-            use_cython=True,
+            # 조기 종료(RTI_LOG=1)에는 get_initial_residuals 가 필요한데 이 acados
+            # 버전의 Cython 인터페이스에는 없다(AttributeError). 그래서 RTI_LOG=1 은
+            # USE_CYTHON=0 과 함께 써야 한다.
+            use_cython=(os.environ.get("USE_CYTHON", "1") == "1"),
             path_json_ocp=json_file_ocp,
             path_json_sim=json_file_sim,
         )
