@@ -133,7 +133,8 @@
 | `plot_openloop.m` | **개루프 예측 오차** — 모델 정확도 자체 + 학습분포에서 멀어질 때의 붕괴 (2칸) |
 | `plot_mass_conditioning.m` | **적재 조건화 근거** — 32/40/48/56t 예측오차 + 폐루프 + 플라시보 (그림 4칸 + **표 창**) |
 | `plot_track_compare.m` | **급코너 궤적 비교** — 기본 1칸(56t, 경로좌표 s-n). `MASS_T`/`SHOW`/`CORNER` 로 전환 |
-| `plot_longitudinal_limit.m` | **종방향 잔차 미사용 근거** — 변속 흔적 + 잔차 집중 + 학습불가 (3칸) |
+| `plot_longitudinal_evidence.m` | **종방향 잔차 미사용 근거 (정본)** — 과도구간 + 예측대실제 산점 + 정속/과도 분해 |
+| `plot_longitudinal_limit.m` | 위의 이전 버전 (변속 흔적 + 잔차 집중 + 산포). 보조 자료 |
 | `plot_hw_L1_lateral.m` | **Highway L1** — 횡편차 n vs s (급코너 음영). `MATFILE` 로 v=12/v=20 전환 |
 | `plot_hw_L1_rmse.m` | **Highway L1** — Y/Yaw RMSE 절대값 + 감소율 (2칸) |
 | `plot_hw_L1_traj.m` | **Highway L1** — 주행 궤적, 전체 + 최대편차 지점 확대 |
