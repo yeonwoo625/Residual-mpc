@@ -113,7 +113,10 @@ def main():
             print(f"{zi+1:6d}{m:5d}t{CW[i,0,zi,0]:13.3f}{CW[i,1,zi,0]:14.3f}"
                   f"{CW[i,0,zi,1]:13.3f}{CW[i,1,zi,1]:14.3f}")
 
+    # psi 를 함께 저장하면 MATLAB 쪽에서 배율을 바꿔가며 (s, n*K) -> (X, Y) 를
+    # 다시 계산할 수 있다. 곡선 형상은 유지한 채 편차만 키워 보기 위함이다.
     D = dict(ref_x=x_ref, ref_y=y_ref, ref_s=s_ref, ref_kappa=kap,
+             ref_psi=psi_ref,
              corner_stat=CW,
              corner_stat_dim=np.array(["mass", "variant", "corner",
                                        "(rms_n, max_n)"], dtype=object),

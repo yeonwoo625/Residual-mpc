@@ -3,11 +3,16 @@
 % 트랙 한 바퀴가 2,546 m 인데 횡오차는 최대 1.1 m 라 전체 트랙을 그리면 세 선이
 % 겹쳐 보인다. 그래서 곡률이 가장 큰 코너만 확대해 비교한다.
 %
-%   왼쪽 칸  전역 좌표 (X, Y) - 실제 스케일. 경로를 어떻게 도는지 보인다.
-%   오른쪽 칸 횡오차 |n| vs 경로거리 s - 차이가 정량적으로 읽힌다.
+%   1번 칸  전역 좌표 (X, Y), 실제 스케일 - 코너 형상과 주행 라인
+%   2번 칸  같은 전역 좌표인데 **횡편차만 MAG 배 확대** - 곡선을 유지한 채 차이를 본다
+%   3번 칸  횡오차 |n| vs 경로거리 s - 차이가 정량적으로 읽힌다
 %
-% 실제 스케일에서 1 m 편차는 110 m 창의 1% 라 왼쪽 칸에서도 크게 보이지 않는다.
-% **차이를 읽는 칸은 오른쪽이다.** 왼쪽은 코너 형상과 주행 라인을 보여준다.
+% 실제 스케일에서 1 m 편차는 110 m 창의 1% 라 1번 칸에서는 세 선이 거의 겹친다.
+% 2번 칸은 경로에 수직인 방향으로만 n 을 MAG 배 늘려 다시 그린 것이다.
+%     X = Xr(s) - sin(psi) * (n * MAG),   Y = Yr(s) + cos(psi) * (n * MAG)
+% 도로의 곡선 형상은 그대로 두고 편차만 키우므로 '어느 쪽으로 얼마나 밀리는지'가
+% 보인다. **실제 거리가 아니므로 제목에 배율을 반드시 표기한다.**
+% 정량 비교는 3번 칸(실제 값)으로 한다.
 %
 % CORNER 로 두 코너 중 하나를 고른다. 코너 2 (s=1726 m) 에서 차이가 가장 크다.
 %
@@ -22,6 +27,7 @@ clear; close all
 load('fig_track_compare.mat')
 
 CORNER = 2;        % 1 = s 1232 m,  2 = s 1726 m (차이가 가장 큰 코너)
+MAG    = 20;       % 2번 칸의 횡편차 확대 배율 (1 = 확대 없음)
 HALF   = zoom_half;
 
 REF  = [0.72 0.72 0.72];
@@ -49,13 +55,13 @@ fprintf(['\nWhole-lap corner RMS (|kappa| >= 0.02): ' ...
 fprintf('Residual runs were at 6.5 Hz (pre solver fix), nominal at 10 Hz.\n\n');
 
 %% ---- 그림: 행 = 적재, 열 = [XY 확대, |n| vs s] ----
-figure('Color','w','Position',[60 60 1080 700])
+figure('Color','w','Position',[40 40 1400 700])
 for i = 1:nM
     xn = traj_x{i,1};  yn = traj_y{i,1};   sn = traj_s{i,1};  nn = traj_n{i,1};
     xr = traj_x{i,2};  yr = traj_y{i,2};   sr = traj_s{i,2};  nr = traj_n{i,2};
 
-    % --- (좌) 전역 좌표 확대 ---
-    subplot(nM,2,(i-1)*2+1); hold on; box on
+    % --- (1) 전역 좌표 확대, 실제 스케일 ---
+    subplot(nM,3,(i-1)*3+1); hold on; box on
     set(gca,'FontSize',10,'TickDir','out')
     p0 = plot(ref_x, ref_y, '-', 'Color', REF, 'LineWidth', 5);
     p1 = plot(xn, yn, '-', 'Color', NOM, 'LineWidth', 1.8);
@@ -71,8 +77,30 @@ for i = 1:nM
     title(sprintf('%d t  -  corner %d,  s = %.0f m  (true scale)', ...
           mass(i), CORNER, zs), 'FontSize',11,'FontWeight','normal')
 
-    % --- (우) 횡오차 |n| vs s ---
-    subplot(nM,2,(i-1)*2+2); hold on; box off
+    % --- (2) 같은 좌표, 횡편차만 MAG 배 ---
+    subplot(nM,3,(i-1)*3+2); hold on; box on
+    set(gca,'FontSize',10,'TickDir','out')
+    % (s, n) -> 전역 좌표, 횡편차만 MAG 배. 경로 형상은 그대로 둔다.
+    smn = mod(sn(:), s_total);   smr = mod(sr(:), s_total);
+    pxn = interp1(ref_s, ref_x,   smn, 'linear', 'extrap');
+    pyn = interp1(ref_s, ref_y,   smn, 'linear', 'extrap');
+    psn = interp1(ref_s, ref_psi, smn, 'linear', 'extrap');
+    pxr = interp1(ref_s, ref_x,   smr, 'linear', 'extrap');
+    pyr = interp1(ref_s, ref_y,   smr, 'linear', 'extrap');
+    psr = interp1(ref_s, ref_psi, smr, 'linear', 'extrap');
+    xnm = pxn - sin(psn) .* (MAG * nn(:));   ynm = pyn + cos(psn) .* (MAG * nn(:));
+    xrm = pxr - sin(psr) .* (MAG * nr(:));   yrm = pyr + cos(psr) .* (MAG * nr(:));
+    plot(ref_x, ref_y, '-', 'Color', REF, 'LineWidth', 5);
+    plot(xnm, ynm, '-', 'Color', NOM, 'LineWidth', 1.8);
+    plot(xrm, yrm, '-', 'Color', RES, 'LineWidth', 1.8);
+    axis equal
+    xlim([cx-HALF cx+HALF]); ylim([cy-HALF cy+HALF]);
+    xlabel('X  [m]')
+    title(sprintf('%d t  -  lateral deviation \\times%d  (not to scale)', ...
+          mass(i), MAG), 'FontSize',11,'FontWeight','normal')
+
+    % --- (3) 횡오차 |n| vs s ---
+    subplot(nM,3,(i-1)*3+3); hold on; box off
     set(gca,'FontSize',10,'TickDir','out','XGrid','on','YGrid','on', ...
             'GridColor',[.85 .85 .85],'GridAlpha',1,'Layer','bottom')
     wn = abs(sn - zs) <= HALF;   wr = abs(sr - zs) <= HALF;
