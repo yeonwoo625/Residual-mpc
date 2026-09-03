@@ -132,7 +132,7 @@
 | `plot_tracking_rmse.m` | **Tracking RMSE 표** — 일반화 축(속도·적재·트랙·마찰·조향제약) 11조건 X/Y/Yaw |
 | `plot_openloop.m` | **개루프 예측 오차** — 모델 정확도 자체 + 학습분포에서 멀어질 때의 붕괴 (2칸) |
 | `plot_mass_conditioning.m` | **적재 조건화 근거** — 32/40/48/56t 예측오차 + 폐루프 + 플라시보 (그림 4칸 + **표 창**) |
-| `plot_track_compare.m` | **급코너 궤적 비교** — 32/56t, 참조경로/nominal/residual, XY 실제스케일 + \|n\| vs s |
+| `plot_track_compare.m` | **급코너 궤적 비교** — 기본 1칸(56t, 경로좌표 s-n). `MASS_T`/`SHOW`/`CORNER` 로 전환 |
 
 > **수치 출력:** 신규 스크립트(`plot_mass_conditioning`, `plot_extrapolation`,
 > `plot_openloop`, `plot_solvetime`)는 그림을 그리기 전에 **명령창에 표를 출력**한다.
