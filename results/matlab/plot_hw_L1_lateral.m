@@ -13,8 +13,10 @@
 
 clear; close all
 
-% v=20 이 기본. v=12 를 보려면 아래를 'fig_highway_L1.mat' 로 바꾼다.
-MATFILE = 'fig_highway_L1_v20.mat';
+% 기본 = v=20, 초기속도 72 km/h (주행의 84% 가 15 m/s 이상. 고속 검증의 정본).
+%   'fig_highway_L1.mat'      v=12, 정지 출발
+%   'fig_highway_L1_v20.mat'  v=20, 정지 출발 (가속 구간이 대부분이라 참고용)
+MATFILE = 'fig_highway_L1_v20i.mat';
 load(MATFILE)
 
 NOM  = [0.12 0.47 0.71];
@@ -67,5 +69,5 @@ text(max(sn)*0.97, yhi*0.86, 'shaded = top 20% curvature', ...
      'HorizontalAlignment','right','FontSize',9,'Color',[0.55 0.55 0.55]);
 xlim([s_min max(sn)]); ylim([ylo yhi])
 xlabel('Path distance  s  [m]'); ylabel('Lateral deviation  n  [m]')
-title(sprintf('Highway No.1 (shifted path),  v = %.0f m/s  -  lateral error', v_target), ...
+title({'Highway No.1 (shifted path)  -  lateral error', note}, ...
       'FontSize',12,'FontWeight','normal')

@@ -14,8 +14,10 @@
 
 clear; close all
 
-% v=20 이 기본. v=12 를 보려면 아래를 'fig_highway_L1.mat' 로 바꾼다.
-MATFILE = 'fig_highway_L1_v20.mat';
+% 기본 = v=20, 초기속도 72 km/h (주행의 84% 가 15 m/s 이상. 고속 검증의 정본).
+%   'fig_highway_L1.mat'      v=12, 정지 출발
+%   'fig_highway_L1_v20.mat'  v=20, 정지 출발 (가속 구간이 대부분이라 참고용)
+MATFILE = 'fig_highway_L1_v20i.mat';
 load(MATFILE)
 
 NOM  = [0.12 0.47 0.71];
@@ -26,7 +28,7 @@ sel  = [1 6 4];                       % Y RMSE, corner Y RMSE, Yaw RMSE
 lab  = {'Y RMSE', 'Y RMSE (corner)', 'Yaw RMSE'};
 unit = {'[m]', '[m]', '[deg]'};
 
-fprintf('\n=== Highway L1, v=%.0f : tracking error ===\n', v_target);
+fprintf('\n=== Highway L1 : tracking error ===\n%s\n', note);
 fprintf('[all,  s >= %.0f m]\n', s_min);
 fprintf('%14s', ''); fprintf('%18s', metric{:}); fprintf('\n');
 for i = 1:numel(variant)
@@ -77,8 +79,7 @@ end
 set(gca,'XTick',1:3,'XTickLabel', xt)
 xlim([0.4 3.6]); ylim([0 max(met(1,sel))*1.25])
 ylabel('RMSE   (m for Y,  deg for Yaw)')
-title(sprintf('(a)  Absolute error   (v = %.0f m/s)', v_target), ...
-      'FontSize',12,'FontWeight','normal')
+title({'(a)  Absolute error', note}, 'FontSize',12,'FontWeight','normal')
 
 %% (b) 감소율
 subplot(1,2,2); hold on; box off

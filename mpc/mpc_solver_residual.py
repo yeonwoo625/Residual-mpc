@@ -215,6 +215,13 @@ class MPCSolverResidual:
         # 주행 기본값은 끈 상태로 둔다. 켜면 10 회 -> 1 회로 해가 달라져
         # (콜드 상태 기준 조향 최대 11.5 deg) 기존 주행 결과를 전부 재검증해야 한다.
         ocp.solver_options.rti_log_residuals = int(os.environ.get("RTI_LOG", "0"))
+        # 조기 종료 판정에 쓰는 허용오차. acados 기본 1e-6 은 매 스텝 상태가 바뀌는
+        # 실주행에서 10회 안에 도달하지 못해 조기 종료가 전혀 작동하지 않는다.
+        _tol = os.environ.get("NLP_TOL", "")
+        if _tol:
+            for _k in ("nlp_solver_tol_stat", "nlp_solver_tol_eq",
+                       "nlp_solver_tol_ineq", "nlp_solver_tol_comp"):
+                setattr(ocp.solver_options, _k, float(_tol))
         if ocp.solver_options.rti_log_residuals:
             # l4acados 의 transform_ocp 이 요구한다 (SQP_RTI 에서는 일부 잔차만
             # 계산 가능하므로 '가능한 것만 로깅' 모드를 켜야 한다).

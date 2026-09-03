@@ -13,8 +13,10 @@
 
 clear; close all
 
-% v=20 이 기본. v=12 를 보려면 아래를 'fig_highway_L1.mat' 로 바꾼다.
-MATFILE = 'fig_highway_L1_v20.mat';
+% 기본 = v=20, 초기속도 72 km/h (주행의 84% 가 15 m/s 이상. 고속 검증의 정본).
+%   'fig_highway_L1.mat'      v=12, 정지 출발
+%   'fig_highway_L1_v20.mat'  v=20, 정지 출발 (가속 구간이 대부분이라 참고용)
+MATFILE = 'fig_highway_L1_v20i.mat';
 load(MATFILE)
 
 ZOOM_HALF = 12;        % 확대 창 반폭 [m]. 줄이면 편차가 더 크게 보인다
@@ -34,7 +36,7 @@ sz = sn(idx(k));
 cx = interp1(ref_s, ref_x, sz);
 cy = interp1(ref_s, ref_y, sz);
 
-fprintf('\n=== Highway L1, v=%.0f : trajectory ===\n', v_target);
+fprintf('\n=== Highway L1 : trajectory ===\n%s\n', note);
 fprintf('path length %.0f m, min radius %.1f m\n', s_total, 1/max(abs(ref_kappa)));
 fprintf('%14s %12s %12s %12s\n','','distance [m]','max|n| [m]','rate [Hz]');
 for i = 1:numel(variant)

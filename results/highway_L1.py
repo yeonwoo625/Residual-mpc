@@ -46,9 +46,16 @@ from eval_b1 import estimate_dt                                  # noqa: E402
 HOST   = "/home/vilab/CarMaker/mpc_host"
 WP     = os.path.join(HOST, "highway_waypoints_L1.npy")
 CASES  = [
-    # (목표속도, nominal 파일, residual 파일, 출력 .mat)
-    (12, "hw_nom_L1.npy",  "hw_res_L1.npy",  "fig_highway_L1.mat"),
-    (20, "hw_nom_v20.npy", "hw_res_v20.npy", "fig_highway_L1_v20.mat"),
+    # (목표속도, nominal 파일, residual 파일, 출력 .mat, 조건 설명)
+    (12, "hw_nom_L1.npy",  "hw_res_L1.npy",  "fig_highway_L1.mat",
+     "v=12, start from standstill"),
+    (20, "hw_nom_v20.npy", "hw_res_v20.npy", "fig_highway_L1_v20.mat",
+     "v=20, start from standstill (only 4% of the run reaches 19 m/s)"),
+    # 정지 출발이면 925 m 경로 대부분이 가속 구간이라 고속 검증이 안 된다.
+    # TestRun 의 DrivMan.Init.Velocity 를 72 km/h(=20 m/s)로 두고 다시 돌린 것.
+    # 주행의 84% 가 v>=15 이고, 이 조건이 고속 검증의 정본이다.
+    (20, "hw_nom_v20i.npy", "hw_res_v20i.npy", "fig_highway_L1_v20i.mat",
+     "v=20, initial velocity 72 km/h (84% of the run above 15 m/s)"),
 ]
 VARIANT = ["Nominal MPC", "Residual MPC"]
 S_MIN  = 30.0        # 출발 오프셋 제외
@@ -57,7 +64,7 @@ CORNER_PCT = 80      # 곡률 상위 20% 를 급코너로
 REF_STEP = 5         # 기준 경로 솎기 (0.1 m -> 0.5 m 간격)
 
 
-def build(v_target, f_nom, f_res, out, pi, s_ref, x_ref, y_ref, psi, kap, kthr, kf):
+def build(v_target, f_nom, f_res, out, note, pi, s_ref, x_ref, y_ref, psi, kap, kthr, kf):
     """한 속도 조건에 대한 .mat 생성."""
     runs = [(VARIANT[0], f_nom), (VARIANT[1], f_res)]
     TS, TN, TA, TV, TX, TY = ({} for _ in range(6))
@@ -84,7 +91,7 @@ def build(v_target, f_nom, f_res, out, pi, s_ref, x_ref, y_ref, psi, kap, kthr, 
 
     hdr = ["Y RMSE [m]", "mean|n| [m]", "max|n| [m]", "Yaw RMSE [deg]",
            "max|a| [deg]", "corner Y RMSE [m]", "rate [Hz]", "distance [m]"]
-    print(f"\n{'='*74}\n목표 v = {v_target} m/s   (실제 최대 "
+    print(f"\n{'='*74}\n{note}   (실제 최대 "
           f"{max(TV[0].max(), TV[1].max()):.2f} m/s)\n{'='*74}")
     for tag, row in (("전 구간 (s>=%.0f)" % S_MIN, M),
                      ("고속 구간 (v>=%.0f)" % V_HI, MH)):
@@ -103,7 +110,7 @@ def build(v_target, f_nom, f_res, out, pi, s_ref, x_ref, y_ref, psi, kap, kthr, 
     D = dict(ref_x=x_ref[sl], ref_y=y_ref[sl], ref_s=s_ref[sl],
              ref_psi=psi[sl], ref_kappa=kap[sl],
              s_total=s_ref[-1], kappa_thr=kthr, s_min=S_MIN, v_hi=V_HI,
-             v_target=float(v_target),
+             v_target=float(v_target), note=note,
              variant=np.array(VARIANT, dtype=object),
              metric=np.array(hdr, dtype=object), met=M, met_hi=MH)
     for key, src in (("traj_s", TS), ("traj_n", TN), ("traj_a", TA),
@@ -132,12 +139,12 @@ def main():
     print(f"급코너 기준 |kappa| >= {kthr:.5f} (R <= {1/kthr:.0f} m, 상위 {100-CORNER_PCT}%)")
     print(f"평가 구간 s >= {S_MIN:.0f} m (출발 오프셋 제외), 고속 기준 v >= {V_HI:.0f} m/s")
 
-    for v_t, f_n, f_r, out in CASES:
+    for v_t, f_n, f_r, out, note in CASES:
         if not (os.path.exists(os.path.join(HOST, f_n))
                 and os.path.exists(os.path.join(HOST, f_r))):
-            print(f"\n[건너뜀] v={v_t}: 주행 파일 없음")
+            print(f"\n[건너뜀] {note}: 주행 파일 없음")
             continue
-        build(v_t, f_n, f_r, out, pi, s_ref, x_ref, y_ref, psi, kap, kthr, kf)
+        build(v_t, f_n, f_r, out, note, pi, s_ref, x_ref, y_ref, psi, kap, kthr, kf)
 
 
 if __name__ == "__main__":
