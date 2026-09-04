@@ -134,7 +134,7 @@
 | `plot_mass_conditioning.m` | **적재 조건화 근거** — 32/40/48/56t 예측오차 + 폐루프 + 플라시보 (그림 4칸 + **표 창**) |
 | `plot_track_compare.m` | **급코너 궤적 비교** — 기본 1칸(56t, 경로좌표 s-n). `MASS_T`/`SHOW`/`CORNER` 로 전환 |
 | `plot_longitudinal_evidence.m` | **종방향 잔차 미사용 근거 (정본)** — 과도구간 + 예측대실제 산점 + 정속/과도 분해 |
-| `plot_control_inputs.m` | **제어 입출력** — 창2개: 명령(스로틀/조향각/조향각속도) + 응답(속도/가속도). 3조건 |
+| `plot_control_inputs.m` | **제어 입출력** — 창2개: 명령(스로틀/조향각/조향각속도) + 응답(속도/가속도). `XAXIS` 로 거리/시간 전환 |
 | `plot_longitudinal_limit.m` | 위의 이전 버전 (변속 흔적 + 잔차 집중 + 산포). 보조 자료 |
 | `plot_hw_L1_lateral.m` | **Highway L1** — 횡편차 n vs s (급코너 음영). `MATFILE` 로 v=12/v=20 전환 |
 | `plot_hw_L1_rmse.m` | **Highway L1** — Y/Yaw RMSE 절대값 + 감소율 (2칸) |

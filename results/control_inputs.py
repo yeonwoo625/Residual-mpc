@@ -21,7 +21,10 @@ MPC 가 차량에 보내는 것은 스로틀 D 와 조향각 delta 다(속도가
 시절이라 10 Hz 를 못 지켰다. 고속 조건만 양쪽 10 Hz 다. 조향각속도는 dt 로 나누므로
 제어율을 데이터에서 역산해 쓴다(DT=0.1 고정 시 6.5 Hz 주행이 1.55배 과대평가된다).
 
-가로축은 경로거리 s 를 쓴다. 제어율이 달라 시간축은 두 주행을 나란히 놓을 수 없다.
+가로축은 경로거리 s 와 시간 t 를 모두 저장한다(MATLAB 쪽에서 전환).
+  s  같은 지점을 나란히 비교할 때. 두 주행의 속도가 달라도 위치가 맞는다.
+  t  속도가 어떻게 올라가고 유지되는지 볼 때. 제어율이 달라도 초 단위는 같으나,
+     같은 t 가 같은 지점을 뜻하지는 않는다.
 
 사용:  python3 results/control_inputs.py
 출력:  표 + results/matlab/fig_control_inputs.mat
@@ -68,6 +71,7 @@ def main():
     DR = np.empty((nC, 2), dtype=object)   # 조향각속도 [deg/s]
     VV = np.empty((nC, 2), dtype=object)   # 속도
     AA = np.empty((nC, 2), dtype=object)   # 가속도 [m/s^2]
+    TT = np.empty((nC, 2), dtype=object)   # 시간 [s]. 제어율이 달라 스텝수x dt 로 만든다
     # [rate_hz, D평균, 풀스로틀%, 제동%, |delta|최대, delta_rate RMS,
     #  delta_rate 최대, v평균, v최대, a평균, |a|최대]
     MET = np.zeros((nC, 2, 11))
@@ -82,6 +86,7 @@ def main():
             dt = estimate_dt(s, v)
             rate = np.gradient(de, dt) * R2D
             acc = np.gradient(v, dt)
+            TT[i, k] = np.arange(len(s)) * dt
             SS[i, k], DD[i, k] = s, D
             DE[i, k], DR[i, k], VV[i, k], AA[i, k] = de * R2D, rate, v, acc
             MET[i, k] = [1 / dt, D.mean(), 100 * np.mean(D > 0.99),
@@ -118,7 +123,7 @@ def main():
                          "max_delta_rate_dps", "v_mean", "v_max",
                          "a_mean", "max_abs_a"], dtype=object),
         met=MET, delta_max_deg=DELTA_MAX_DEG,
-        s=SS, throttle=DD, delta_deg=DE, delta_rate_dps=DR,
+        s=SS, t=TT, throttle=DD, delta_deg=DE, delta_rate_dps=DR,
         speed=VV, accel=AA,
     ))
     print(f"\n저장: {OUT}")

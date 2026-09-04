@@ -32,7 +32,13 @@
 clear; close all
 load('fig_control_inputs.mat')
 
-CASE = 0;          % 0 = 세 조건 모두, 1 = 저마찰, 2 = 고속, 3 = 기준
+CASE  = 0;          % 0 = 세 조건 모두, 1 = 저마찰, 2 = 고속, 3 = 기준
+XAXIS = 'dist';     % 'dist' = 경로거리 s [m]  |  'time' = 시간 t [s]
+%
+% 어느 축을 쓸지
+%   dist  같은 지점을 나란히 비교할 때. 두 주행의 속도가 달라도 위치가 맞는다.
+%   time  속도가 어떻게 올라가고 유지되는지 볼 때. 제어율이 달라도 초 단위는
+%         같으나, 같은 t 가 같은 지점을 뜻하지는 않는다.
 
 NOM  = [0.12 0.47 0.71];
 RES  = [0.90 0.49 0.13];
@@ -40,6 +46,12 @@ GREY = [0.55 0.55 0.55];
 
 if CASE == 0, rows = 1:numel(case_); else rows = CASE; end
 nR = numel(rows);
+
+if strcmpi(XAXIS, 'time')
+    XV = t;    XLAB = 'Time  [s]';
+else
+    XV = s;    XLAB = 'Path distance  s  [m]';
+end
 
 %% ---- 수치 표 (명령창) ----
 fprintf('\n=== Control commands: nominal vs residual ===\n');
@@ -70,7 +82,7 @@ fprintf(['\nSteering rate and acceleration divide by the control period. Residua
 figure('Color','w','Position',[40 40 1340 300*nR])
 for r = 1:nR
     i = rows(r);
-    sn = s{i,1};  sr = s{i,2};
+    sn = XV{i,1};  sr = XV{i,2};
     smax = max([max(sn) max(sr)]);
 
     % --- 스로틀 ---
@@ -85,7 +97,7 @@ for r = 1:nR
     end
     xlim([0 smax]); ylim([-0.15 1.15])
     ylabel('Throttle  D  [-]')
-    if r == nR, xlabel('Path distance  s  [m]'); end
+    if r == nR, xlabel(XLAB); end
     title(sprintf('%s   -   throttle', case_{i}), 'FontSize',10,'FontWeight','normal')
 
     % --- 조향각 ---
@@ -103,7 +115,7 @@ for r = 1:nR
          'FontSize',8.5,'Color',[0.3 0.3 0.3]);
     xlim([0 smax]); ylim([-delta_max_deg*1.15 delta_max_deg*1.15])
     ylabel('Steering  \delta  [deg]')
-    if r == nR, xlabel('Path distance  s  [m]'); end
+    if r == nR, xlabel(XLAB); end
     title('steering angle', 'FontSize',10,'FontWeight','normal')
 
     % --- 조향각속도 ---
@@ -122,7 +134,7 @@ for r = 1:nR
     end
     xlim([0 smax]); ylim([-L L])
     ylabel('Steering rate  [deg/s]')
-    if r == nR, xlabel('Path distance  s  [m]'); end
+    if r == nR, xlabel(XLAB); end
     title('steering rate', 'FontSize',10,'FontWeight','normal')
 end
 
@@ -130,7 +142,7 @@ end
 figure('Color','w','Position',[80 60 940 300*nR])
 for r = 1:nR
     i = rows(r);
-    sn = s{i,1};  sr = s{i,2};
+    sn = XV{i,1};  sr = XV{i,2};
     smax = max([max(sn) max(sr)]);
 
     % --- 속도 ---
@@ -147,7 +159,7 @@ for r = 1:nR
          'FontSize',8.5,'Color',[0.3 0.3 0.3]);
     xlim([0 smax]); ylim([0 max([met(i,1,9) met(i,2,9)])*1.12])
     ylabel('Speed  v  [m/s]')
-    if r == nR, xlabel('Path distance  s  [m]'); end
+    if r == nR, xlabel(XLAB); end
     title(sprintf('%s   -   speed', case_{i}), 'FontSize',10,'FontWeight','normal')
 
     % --- 가속도 ---
@@ -166,6 +178,6 @@ for r = 1:nR
     end
     xlim([0 smax]); ylim([-L L])
     ylabel('Acceleration  [m/s^2]')
-    if r == nR, xlabel('Path distance  s  [m]'); end
+    if r == nR, xlabel(XLAB); end
     title('acceleration', 'FontSize',10,'FontWeight','normal')
 end
