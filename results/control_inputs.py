@@ -7,6 +7,11 @@ MPC 가 차량에 보내는 것은 스로틀 D 와 조향각 delta 다(속도가
 [derD, derDelta] 가 최적화 변수다. 그래서 delta 의 시간 미분(조향각속도)까지
 함께 본다 - 제약 delta<=30deg, ddelta 는 DDELTA_MAX 로 건다.
 
+차량 응답(속도 v, 가속도 a = dv/dt)도 함께 저장한다. 속도는 명령이 아니라
+스로틀의 결과이므로, "명령(D, delta) -> 응답(v, a)" 을 나란히 봐야 제어기가
+무엇을 했고 차량이 어떻게 반응했는지 읽힌다. 가속도는 제어 주기로 나눈 값이라
+제어율을 데이터에서 역산해 쓴다.
+
   세 조건
     저마찰      mu=0.3, v=9,  Hockenheim (완주한 유일한 저마찰 쌍)
     고속        v=20, Highway L1 (초기속도 72 km/h, 주행의 84% 가 v>=15)
@@ -62,8 +67,10 @@ def main():
     DE = np.empty((nC, 2), dtype=object)   # 조향각 [deg]
     DR = np.empty((nC, 2), dtype=object)   # 조향각속도 [deg/s]
     VV = np.empty((nC, 2), dtype=object)   # 속도
-    # [rate_hz, D평균, 풀스로틀%, 제동%, |delta|최대, delta_rate RMS, delta_rate 최대]
-    MET = np.zeros((nC, 2, 7))
+    AA = np.empty((nC, 2), dtype=object)   # 가속도 [m/s^2]
+    # [rate_hz, D평균, 풀스로틀%, 제동%, |delta|최대, delta_rate RMS,
+    #  delta_rate 최대, v평균, v최대, a평균, |a|최대]
+    MET = np.zeros((nC, 2, 11))
 
     print("제어 입출력 — MPC 가 차량에 보내는 값\n")
     print(f"{'조건':>26}{'제어기':>14}{'Hz':>6}{'D평균':>8}{'풀':>6}{'제동':>6}"
@@ -74,15 +81,25 @@ def main():
             s, v, D, de = a[:, 0], a[:, 3], a[:, 4], a[:, 5]
             dt = estimate_dt(s, v)
             rate = np.gradient(de, dt) * R2D
+            acc = np.gradient(v, dt)
             SS[i, k], DD[i, k] = s, D
-            DE[i, k], DR[i, k], VV[i, k] = de * R2D, rate, v
+            DE[i, k], DR[i, k], VV[i, k], AA[i, k] = de * R2D, rate, v, acc
             MET[i, k] = [1 / dt, D.mean(), 100 * np.mean(D > 0.99),
                          100 * np.mean(D < 0), np.abs(de * R2D).max(),
-                         np.sqrt((rate ** 2).mean()), np.abs(rate).max()]
+                         np.sqrt((rate ** 2).mean()), np.abs(rate).max(),
+                         v.mean(), v.max(), acc.mean(), np.abs(acc).max()]
             nm = lbl if k == 0 else ""
             print(f"{nm:>26}{VARIANT[k]:>14}{MET[i,k,0]:6.1f}{MET[i,k,1]:8.3f}"
                   f"{MET[i,k,2]:5.0f}%{MET[i,k,3]:5.0f}%{MET[i,k,4]:9.1f}"
                   f"{MET[i,k,5]:9.2f}{MET[i,k,6]:9.1f}")
+        print()
+
+    print(f"{'조건':>26}{'제어기':>14}{'평균v':>8}{'최대v':>8}{'평균a':>9}{'|a|최대':>9}")
+    for i, (lbl, _, _) in enumerate(CASES):
+        for k in range(2):
+            nm = lbl if k == 0 else ""
+            print(f"{nm:>26}{VARIANT[k]:>14}{MET[i,k,7]:8.2f}{MET[i,k,8]:8.2f}"
+                  f"{MET[i,k,9]:+9.3f}{MET[i,k,10]:9.2f}")
         print()
 
     print("주의")
@@ -98,9 +115,11 @@ def main():
         variant=np.array(VARIANT, dtype=object),
         metric=np.array(["rate_hz", "D_mean", "full_throttle_pct", "braking_pct",
                          "max_abs_delta_deg", "delta_rate_rms_dps",
-                         "max_delta_rate_dps"], dtype=object),
+                         "max_delta_rate_dps", "v_mean", "v_max",
+                         "a_mean", "max_abs_a"], dtype=object),
         met=MET, delta_max_deg=DELTA_MAX_DEG,
-        s=SS, throttle=DD, delta_deg=DE, delta_rate_dps=DR, speed=VV,
+        s=SS, throttle=DD, delta_deg=DE, delta_rate_dps=DR,
+        speed=VV, accel=AA,
     ))
     print(f"\n저장: {OUT}")
 
