@@ -131,6 +131,7 @@
 | `plot_extrapolation.m` | 외삽 일반화 — 속도 스윕 / 학습범위 밖 분포 / y·yaw·채터 / 종방향 대가 (2x2) |
 | `plot_tracking_rmse.m` | **Tracking RMSE 표** — 일반화 축(속도·적재·트랙·마찰·조향제약) 11조건 X/Y/Yaw |
 | `plot_openloop.m` | **개루프 예측 오차** — 모델 정확도 자체 + 학습분포에서 멀어질 때의 붕괴 (2칸) |
+| `plot_lomo_mass.m` | **안 본 적재 일반화** — 적재 하나를 빼고 학습 후 그 적재에서 평가. 안 본 적재에서는 조건화가 진다 (창2: 그림+표) |
 | `plot_mass_conditioning.m` | **적재 조건화 근거** — 32/40/48/56t 예측오차 + 폐루프 + 플라시보 (그림 4칸 + **표 창**) |
 | `plot_track_compare.m` | **급코너 궤적 비교** — 기본 1칸(56t, 경로좌표 s-n). `MASS_T`/`SHOW`/`CORNER` 로 전환 |
 | `plot_longitudinal_evidence.m` | **종방향 잔차 미사용 근거 (정본)** — 과도구간 + 예측대실제 산점 + 정속/과도 분해 |
