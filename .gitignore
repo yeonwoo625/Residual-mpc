@@ -32,3 +32,4 @@ results/matlab/dbglog/
 results/matlab/cloop/
 results/matlab/residual_data/
 results/matlab/INVENTORY.md
+mpc/residual_model_lomo_*.pt

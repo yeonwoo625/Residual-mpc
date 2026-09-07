@@ -18,11 +18,17 @@
   shufmass  8차원. 무게 열을 학습 풀 안에서 섞었다 — 입력 차원은 같고 정보만 없는
             플라시보. cond 와 shufmass 가 같으면 이득은 무게가 아니라 차원 탓이다
 
-지표는 1스텝 예측 오차(잔차 보정 후 남은 오차)의 채널별 RMS 다. 폐루프 주행은
-필요 없다 — 트럭메이커를 돌리지 않는다.
+지표는 1스텝 예측 오차(잔차 보정 후 남은 오차)의 채널별 RMS 다. 여기까지는 폐루프
+주행이 필요 없다 — 트럭메이커를 돌리지 않는다.
+
+학습한 모델은 mpc/residual_model_lomo_{arm}_{mass}_s{seed}.pt 로 저장한다. 안 본
+적재에서의 **주행** 오차를 재려면 이 모델로 그 적재를 주행하면 된다.
+
+  ./scripts/run_ablation.sh lomo_nomass 56 0      # TruckMaker Loads = 24000
+  ./scripts/run_ablation.sh lomo_cond   56 0
 
 사용:  python3 results/lomo_mass.py
-출력:  표 + results/matlab/fig_lomo_mass.mat
+출력:  표 + results/matlab/fig_lomo_mass.mat + 모델 24개(nomass/cond x 4적재 x 3시드)
 """
 import os
 import sys
@@ -85,6 +91,22 @@ def fit(Xtr, ytr, Xva, yva, arm, seed, dev):
     return model, (xm, xs, ym, ys)
 
 
+def save_model(model, norm, arm, H, seed):
+    """주행에 쓸 수 있도록 load_normalized_model 이 읽는 형식으로 저장."""
+    xm, xs, ym, ys = norm
+    ctx = 0 if arm == "nomass" else 2
+    path = os.path.join(ROOT, "mpc", f"residual_model_lomo_{arm}_{H}_s{seed}.pt")
+    torch.save({
+        "state_dict": {k: v.cpu() for k, v in model.state_dict().items()},
+        "norm": {"X_mean": xm, "X_std": xs, "y_mean": ym, "y_std": ys},
+        "config": {"input_dim": 6 + ctx, "output_dim": 4,
+                   "hidden_dim": HIDDEN, "n_layers": LAYERS,
+                   "state_dim": 6, "context_dim": ctx,
+                   "mode": ("concat" if ctx else None)},
+    }, path)
+    return path
+
+
 def test_rms(model, norm, Xte, yte, dev):
     """시험 적재에서 보정 후 남은 오차의 채널별 RMS (원단위)."""
     xm, xs, ym, ys = norm
@@ -136,6 +158,8 @@ def main():
                     Xva[:, 6:8] = Xva[r.permutation(len(Xva)), 6:8]
                 m, nrm = fit(Xtr, yp[tr], Xva, yp[va], arm, s, dev)
                 E[mi, ai, si] = test_rms(m, nrm, Xt2, yte, dev)
+                if arm != "shufmass":       # 플라시보는 주행용이 아니다
+                    save_model(m, nrm, arm, H, s)
             print(f"    {arm:9} 완료", flush=True)
 
     # ---------- 표 ----------

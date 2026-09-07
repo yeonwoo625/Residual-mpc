@@ -152,3 +152,34 @@ MATLAB: `results/matlab/plot_mass_conditioning.m`
 입력에 넣지 않은 것은 차선책이 아니라 일반화를 위한 선택이다.
 
 그림/데이터: `../matlab/plot_lomo_mass.m`, `../matlab/fig_lomo_mass.mat`
+
+### 안 본 적재로 **주행**하려면
+
+`lomo_mass.py` 는 학습한 모델을 `mpc/residual_model_lomo_{nomass,cond}_{mass}_s{seed}.pt`
+로 저장한다(24개). 이 모델은 그 적재를 학습에서 본 적이 없다. 그대로 주행하면
+안 본 적재의 **주행** 오차를 잴 수 있다.
+
+```bash
+# TruckMaker Loads 를 먼저 그 적재로 맞출 것 (payload = 총질량 - 32000)
+./scripts/run_ablation.sh lomo_nomass 56 0     # Loads = 24000
+./scripts/run_ablation.sh lomo_cond   56 0
+```
+
+로그는 `abl_lomo_{arm}_{mass}_s{seed}.npy` 로 떨어지고, `results/mass_summary.py`
+가 자동으로 주워 담는다. 주행 전에는 그 칸이 `-` 로 남는다.
+
+가장 값어치 있는 두 번은 **56 t**(학습 범위 위쪽 끝, 예측에서 조건화가 −112.5% 로
+가장 크게 무너진 곳)의 `lomo_nomass` / `lomo_cond` 다.
+
+---
+
+## 적재별 종합표
+
+`results/mass_summary.py` 가 위의 모든 결과를 적재별 한 표로 모은다.
+
+|  | 본 적재 | 안 본 적재 |
+|---|---|---|
+| **예측 오차** | 차이 없음 (0~3%) | **조건화 패배** (−24.8 / +4.0 / −54.4 / −112.5%) |
+| **주행 오차** | 조건화 7~20% 우세, 그러나 플라시보가 절반 재현 | 미실시 |
+
+그림/데이터: `../matlab/plot_mass_summary.m`, `../matlab/fig_mass_summary.mat`

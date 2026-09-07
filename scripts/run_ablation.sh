@@ -9,15 +9,22 @@
 # 주행 후 서버 터미널 Ctrl-C -> LOG_TRAJ 저장.
 set -e
 ARM="$1"; MASS_T="$2"; SEED="$3"
-if [[ "$ARM" != "nomass" && "$ARM" != "cond" && "$ARM" != "shufmass" ]] \
+case "$ARM" in nomass|cond|shufmass|lomo_nomass|lomo_cond) ;; *) ARM="" ;; esac
+if [[ -z "$ARM" ]] \
    || [[ -z "$MASS_T" || -z "$SEED" ]]; then
-    echo "사용법: $0 {nomass|cond|shufmass} {32|40|48|56} {0|1|2}"
-    echo "  shufmass = 무게 열을 섞어 학습한 플라시보 (8dim, 정보량 0)"; exit 1
+    echo "사용법: $0 {nomass|cond|shufmass|lomo_nomass|lomo_cond} {32|40|48|56} {0|1|2}"
+    echo "  shufmass    = 무게 열을 섞어 학습한 플라시보 (8dim, 정보량 0)"
+    echo "  lomo_*      = 그 적재를 빼고 학습한 모델 (안 본 적재 일반화용)"; exit 1
 fi
 
 ROOT=/home/vilab/CarMaker/mpc_docker
 HOST=/home/vilab/CarMaker/mpc_host
-MODEL="$ROOT/mpc/residual_model_${ARM}_s${SEED}.pt"
+if [[ "$ARM" == lomo_* ]]; then
+    # 그 적재를 통째로 빼고 학습한 모델. 주행하는 적재를 학습에서 본 적이 없다.
+    MODEL="$ROOT/mpc/residual_model_${ARM}_${MASS_T}_s${SEED}.pt"
+else
+    MODEL="$ROOT/mpc/residual_model_${ARM}_s${SEED}.pt"
+fi
 [[ -f "$MODEL" ]] || { echo "모델 없음: $MODEL"; exit 1; }
 
 export USE_RESIDUAL=1 RESIDUAL_FF=1 RESIDUAL_SCALE=0.3
@@ -26,7 +33,7 @@ export TARGET_SPEED=10                      # 기존 ablation/traj 데이터와 
 export RESIDUAL_MODEL_PATH="$MODEL"
 export LOG_TRAJ="$HOST/abl_${ARM}_${MASS_T}_s${SEED}.npy"
 
-if [[ "$ARM" == "cond" || "$ARM" == "shufmass" ]]; then
+if [[ "$ARM" == "cond" || "$ARM" == "shufmass" || "$ARM" == "lomo_cond" ]]; then
     export MASS=$((MASS_T * 1000)) COG_X=4.330    # 8dim 모델 (플라시보도 실제 무게를 준다)
 else
     unset MASS COG_X
