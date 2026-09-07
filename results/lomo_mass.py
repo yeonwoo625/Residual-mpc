@@ -41,6 +41,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(ROOT, "mpc"))
 from residual_model import ResidualModel, ConditionedResidualModel   # noqa: E402
+from residual_model_wrapper import NormalizedResidualModel            # noqa: E402
 
 DATA   = "/home/vilab/CarMaker/mpc_host/hockenheim_mass.npz"
 OUT    = os.path.join(HERE, "matlab", "fig_lomo_mass.mat")
@@ -108,12 +109,18 @@ def save_model(model, norm, arm, H, seed):
 
 
 def test_rms(model, norm, Xte, yte, dev):
-    """시험 적재에서 보정 후 남은 오차의 채널별 RMS (원단위)."""
+    """시험 적재에서 보정 후 남은 오차의 채널별 RMS (원단위).
+
+    MPC 에 실제로 들어가는 값으로 잰다. 즉 NormalizedResidualModel 을 거친다 -
+    정규화 해제 뒤 물리 한계 [0.2, 0.1, 0.05, 0.4] 로 클램프된 출력이다. 안 본
+    적재에서는 MLP 가 범위 밖으로 튀는 일이 있어 클램프가 실제로 작동하고,
+    클램프 없는 원출력으로 재면 오차가 과장된다. results/mass_conditioning.py 도
+    같은 경로(load_normalized_model)를 쓰므로 두 표가 서로 비교 가능하다.
+    """
     xm, xs, ym, ys = norm
-    model.eval()
+    w = NormalizedResidualModel(model, xm, xs, ym, ys, scale=1.0).to(dev).eval()
     with torch.no_grad():
-        g = model(torch.tensor((Xte - xm) / xs, dtype=torch.float32, device=dev))
-    g = g.cpu().numpy() * ys + ym
+        g = w(torch.tensor(Xte, dtype=torch.float32, device=dev)).cpu().numpy()
     return np.sqrt(((yte - g) ** 2).mean(0))
 
 

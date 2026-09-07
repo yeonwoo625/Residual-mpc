@@ -26,10 +26,16 @@
 주행 오차는 results/ablation/*.npy 를 직접 평가한다.
 
   본 적재 주행    abl_{nomass,cond,shufmass}_{mass}[_sN].npy      (있음)
-  안 본 적재 주행 abl_lomo_{nomass,cond}_{mass}_s{N}.npy          (주행해야 생김)
+  안 본 적재 주행 heldout56/heldout56_{state,cond}_s{N}.npy       (56 t 는 있음)
+                  abl_lomo_{nomass,cond}_{mass}_s{N}.npy          (32/40/48 t 는 주행 필요)
 
-안 본 적재 주행은 아직 없을 수 있다. 없으면 NaN 으로 두고 표에 '-' 로 찍는다.
-채우려면:  ./scripts/run_ablation.sh lomo_nomass 56 0   (TruckMaker Loads=24000)
+56 t 는 2026-08-04 에 이미 주행돼 있다. results/train_heldout56.py 가 32/40/48 t
+로만 학습한 모델이고, 가중치·정규화가 lomo_mass.py 의 56 t 모델과 **완전히 동일**함을
+확인했다(같은 하이퍼파라미터·시드·분할). 그래서 그대로 '안 본 적재 주행' 으로 쓴다.
+이름만 다르다 - heldout56 의 state = nomass, cond = cond.
+
+나머지 적재는 아직 없다. 없으면 NaN 으로 두고 표에 '-' 로 찍는다.
+채우려면:  ./scripts/run_ablation.sh lomo_nomass 32 0   (TruckMaker Loads=0)
 
 사용:  python3 results/mass_summary.py
 출력:  표 + results/matlab/fig_mass_summary.mat
@@ -89,8 +95,14 @@ def main():
                     D_SEEN[mi, ai, si] = v
                 if arm == "shufmass":             # 플라시보는 LOMO 로 안 만든다
                     continue
-                for p in (os.path.join(ABL, f"abl_lomo_{arm}_{m}_s{s}.npy"),
-                          os.path.join(ABL, f"abl_lomo_{arm}_{m}{suf}.npy")):
+                # 56 t 는 heldout56 이름으로 이미 주행돼 있다 (모델은 동일)
+                old = {"nomass": "state", "cond": "cond"}[arm]
+                cands = [os.path.join(ABL, f"abl_lomo_{arm}_{m}_s{s}.npy"),
+                         os.path.join(ABL, f"abl_lomo_{arm}_{m}{suf}.npy")]
+                if m == 56:
+                    cands.append(os.path.join(HERE, "heldout56",
+                                              f"heldout56_{old}_s{s}.npy"))
+                for p in cands:
                     v = drive(p, kf)
                     if v:
                         D_UNSEEN[mi, ai, si] = v
